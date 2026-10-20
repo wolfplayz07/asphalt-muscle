@@ -1,0 +1,126 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Asphalt Muscle">
+<meta name="theme-color" content="#14181f"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><link rel="apple-touch-icon" href="icon-192.png">
+<title>Asphalt Muscle</title>
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#000;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;font-family:-apple-system,Helvetica,sans-serif;color:#fff}
+canvas{display:block;position:fixed;inset:0}
+#hud{position:fixed;top:calc(env(safe-area-inset-top) + 8px);left:calc(env(safe-area-inset-left) + 12px);font:600 15px/1.35 ui-monospace,Menlo,monospace;text-shadow:0 1px 3px #000;pointer-events:none}
+#spd{position:fixed;top:calc(env(safe-area-inset-top) + 8px);right:calc(env(safe-area-inset-right) + 12px);font:700 26px ui-monospace,Menlo,monospace;text-shadow:0 1px 3px #000;pointer-events:none}
+.b{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 14px);width:76px;height:76px;border-radius:50%;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.45);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.b.on{background:rgba(255,255,255,.45)}
+#L{left:calc(env(safe-area-inset-left) + 14px)}#R{left:calc(env(safe-area-inset-left) + 104px)}
+#G{right:calc(env(safe-area-inset-right) + 14px);background:rgba(40,200,80,.3)}#B{right:calc(env(safe-area-inset-right) + 104px);background:rgba(220,50,50,.3)}
+#start{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(10,12,18,.85);z-index:5}
+#start h1{margin:0 0 18px;font-size:40px;letter-spacing:2px}#start button{font-size:22px;padding:14px 34px;border-radius:12px;border:0;background:#d22;color:#fff;font-weight:700}
+#start p{opacity:.7;font-size:13px;margin-top:14px}
+#rot{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000;z-index:9;font-size:22px;text-align:center;padding:20px}
+@media (orientation:portrait){#rot{display:flex}}
+#msg{position:fixed;top:30%;width:100%;text-align:center;font:800 30px sans-serif;text-shadow:0 2px 6px #000;pointer-events:none;opacity:0;transition:opacity .4s}
+</style>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js"}}</script>
+</head><body>
+<div id="hud">LAP <span id="ln">1</span><br>CUR <span id="cur">0:00.000</span><br>LAST <span id="last">--</span><br>BEST <span id="best">--</span></div>
+<div id="spd">0 mph</div><div id="msg"></div>
+<div class="b" id="L">◀</div><div class="b" id="R">▶</div><div class="b" id="B">BRAKE</div><div class="b" id="G">GAS</div>
+<div id="start"><h1>ASPHALT MUSCLE</h1><button id="go">Tap to start</button><p>Tilt to steer (or use ◀ ▶). Hold GAS / BRAKE.</p></div>
+<div id="rot">↻ Rotate your device to landscape</div>
+<script type="module">
+import * as THREE from 'three';
+if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+const $=id=>document.getElementById(id);
+const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);document.body.prepend(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x8ec9ff);scene.fog=new THREE.Fog(0x8ec9ff,150,500);
+const camera=new THREE.PerspectiveCamera(65,innerWidth/innerHeight,0.5,800);
+scene.add(new THREE.HemisphereLight(0xffffff,0x446633,0.9));const sun=new THREE.DirectionalLight(0xffffff,1.1);sun.position.set(50,100,30);scene.add(sun);
+addEventListener('resize',()=>{renderer.setSize(innerWidth,innerHeight);camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();});
+// ground
+const g=new THREE.Mesh(new THREE.PlaneGeometry(1200,1200),new THREE.MeshLambertMaterial({color:0x3f8f3a}));g.rotation.x=-Math.PI/2;scene.add(g);
+// track
+const ctrl=[[0,-120],[90,-120],[150,-80],[160,0],[120,60],[40,70],[0,120],[-80,130],[-150,80],[-150,-20],[-100,-100]].map(p=>new THREE.Vector3(p[0],0,p[1]));
+const curve=new THREE.CatmullRomCurve3(ctrl,true,'centripetal');
+const N=600,W=11;const pts=curve.getSpacedPoints(N);pts.pop();
+const pos=[],idx=[],kerb=[],kidx=[];
+for(let i=0;i<N;i++){const a=pts[i],b=pts[(i+1)%N];const t=b.clone().sub(a).normalize();const n=new THREE.Vector3(-t.z,0,t.x);
+ pos.push(a.x+n.x*W,0.1,a.z+n.z*W,a.x-n.x*W,0.1,a.z-n.z*W);
+ const j=i*2,k=((i+1)%N)*2;idx.push(j,k,j+1,j+1,k,k+1);
+ for(const s of[1,-1]){const o=s*W;kerb.push(a.x+n.x*o,0.13,a.z+n.z*o,a.x+n.x*(o+s*1.2),0.13,a.z+n.z*(o+s*1.2));}}
+const rg=new THREE.BufferGeometry();rg.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));rg.setIndex(idx);rg.computeVertexNormals();
+const road=new THREE.Mesh(rg,new THREE.MeshLambertMaterial({color:0x3a3a3e,side:THREE.DoubleSide}));scene.add(road);
+// kerbs: alternating colors
+const kg=new THREE.BufferGeometry();const kc=[];const ki=[];
+for(let i=0;i<N;i++)for(let s=0;s<2;s++){const j=(i*2+s)*2,k=(((i+1)%N)*2+s)*2;ki.push(j,k,j+1,j+1,k,k+1);}
+for(let i=0;i<N;i++){const c=(Math.floor(i/4)%2)?[1,1,1]:[.85,.1,.1];for(let q=0;q<4;q++)kc.push(...c);}
+kg.setAttribute('position',new THREE.Float32BufferAttribute(kerb,3));kg.setAttribute('color',new THREE.Float32BufferAttribute(kc,3));kg.setIndex(ki);
+scene.add(new THREE.Mesh(kg,new THREE.MeshBasicMaterial({vertexColors:true,side:THREE.DoubleSide})));
+// start line checker
+const st=pts[0],sd=pts[1].clone().sub(st).normalize(),sAng=Math.atan2(sd.x,sd.z);
+const cv=document.createElement('canvas');cv.width=64;cv.height=8;const cx=cv.getContext('2d');for(let x=0;x<16;x++)for(let y=0;y<2;y++){cx.fillStyle=(x+y)%2?'#fff':'#111';cx.fillRect(x*4,y*4,4,4);}
+const tex=new THREE.CanvasTexture(cv);tex.magFilter=THREE.NearestFilter;
+const line=new THREE.Mesh(new THREE.PlaneGeometry(W*2,2),new THREE.MeshBasicMaterial({map:tex}));line.rotation.x=-Math.PI/2;line.rotation.z=sAng+Math.PI/2;line.rotation.order='YXZ';
+line.rotation.set(-Math.PI/2,0,0);const lg=new THREE.Group();lg.add(line);lg.position.set(st.x,0.15,st.z);lg.rotation.y=sAng;scene.add(lg);
+// gantry
+const gm=new THREE.MeshLambertMaterial({color:0xdddddd});const gn=new THREE.Group();
+for(const s of[-1,1]){const p=new THREE.Mesh(new THREE.BoxGeometry(.6,7,.6),gm);p.position.set(s*(W+2),3.5,0);gn.add(p);}
+const bar=new THREE.Mesh(new THREE.BoxGeometry(W*2+4,1.2,.6),new THREE.MeshLambertMaterial({color:0xcc2222}));bar.position.y=7;gn.add(bar);gn.position.copy(lg.position);gn.rotation.y=sAng;scene.add(gn);
+// scenery trees (instanced)
+const tg=new THREE.ConeGeometry(3,9,6);tg.translate(0,4.5,0);const trees=new THREE.InstancedMesh(tg,new THREE.MeshLambertMaterial({color:0x245e2a}),160);
+const m4=new THREE.Matrix4();let tc=0,rs=7;const rnd=()=>(rs=(rs*16807)%2147483647)/2147483647;
+while(tc<160){const x=(rnd()-.5)*500,z=(rnd()-.5)*500;if(nearest(x,z,0,N).d>W+12){m4.makeTranslation(x,0,z);trees.setMatrixAt(tc++,m4);}}scene.add(trees);
+function nearest(x,z,from,range){let best=1e9,bi=0;for(let k=0;k<range;k++){const i=(from+k+N)%N;const dx=pts[i].x-x,dz=pts[i].z-z,d=dx*dx+dz*dz;if(d<best){best=d;bi=i;}}return{i:bi,d:Math.sqrt(best)};}
+// car
+const car=new THREE.Group();const M=c=>new THREE.MeshLambertMaterial({color:c});
+const box=(w,h,d,x,y,z,m)=>{const b=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);b.position.set(x,y,z);car.add(b);return b;};
+const red=M(0xb3121a),blk=M(0x111111),gls=M(0x223344),chr=M(0xcccccc);
+box(2,.6,4.6,0,.65,0,red);box(1.7,.5,2,0,1.2,-.3,red);box(1.6,.42,.05,0,1.2,.71,gls);box(1.6,.4,.05,0,1.2,-1.31,gls);
+box(.3,.12,1.6,0,.97,1.3,blk);box(.3,.12,1.6,.45,.97,1.3,blk).position.x=-.45;box(.3,.12,1.6,.45,.97,1.3,blk);
+box(2.05,.15,.15,0,.45,2.33,chr);box(2.05,.15,.15,0,.45,-2.33,chr);box(1.9,.15,.25,0,1.0,-2.2,blk);
+const hl=M(0xffffcc);box(.35,.2,.05,.65,.7,2.31,hl);box(.35,.2,.05,-.65,.7,2.31,hl);const tl=M(0xff2200);box(.4,.15,.05,.6,.75,-2.31,tl);box(.4,.15,.05,-.6,.75,-2.31,tl);
+const wheels=[];for(const[x,z]of[[1,1.45],[-1,1.45],[1,-1.45],[-1,-1.45]]){const w=box(.35,.75,.75,x,.38,z,blk);wheels.push(w);}
+scene.add(car);
+// state
+const S={x:st.x,z:st.z,h:sAng,v:0,steer:0,seg:0,mid:false,started:false,lapStart:0,lap:1};
+car.position.set(S.x,0,S.z);
+let best=+localStorage.getItem('am_best')||0,last=0;const fmt=t=>t?`${Math.floor(t/60)}:${(t%60).toFixed(3).padStart(6,'0')}`:'--';
+$('best').textContent=fmt(best);
+const keys={L:0,R:0,G:0,B:0};
+for(const k of['L','R','G','B']){const el=$(k);const on=e=>{e.preventDefault();keys[k]=1;el.classList.add('on')},off=e=>{e.preventDefault();keys[k]=0;el.classList.remove('on')};
+ el.addEventListener('touchstart',on,{passive:false});el.addEventListener('touchend',off,{passive:false});el.addEventListener('touchcancel',off);el.addEventListener('mousedown',on);el.addEventListener('mouseup',off);el.addEventListener('mouseleave',off);}
+const km={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'G',ArrowDown:'B',a:'L',d:'R',w:'G',s:'B'};
+addEventListener('keydown',e=>{if(km[e.key])keys[km[e.key]]=1});addEventListener('keyup',e=>{if(km[e.key])keys[km[e.key]]=0});
+let tilt=null;
+function onOri(e){if(e.beta==null)return;const ang=(screen.orientation&&screen.orientation.angle!=null)?screen.orientation.angle:(window.orientation||0);
+ let t=(ang===90)?e.beta:(ang===-90||ang===270)?-e.beta:e.gamma;tilt=Math.max(-1,Math.min(1,t/25));}
+$('go').addEventListener('click',async()=>{try{if(typeof DeviceOrientationEvent!=='undefined'&&DeviceOrientationEvent.requestPermission){const r=await DeviceOrientationEvent.requestPermission();if(r==='granted')addEventListener('deviceorientation',onOri);}else addEventListener('deviceorientation',onOri);}catch(e){}
+ try{document.documentElement.requestFullscreen&&await document.documentElement.requestFullscreen();screen.orientation&&screen.orientation.lock&&screen.orientation.lock('landscape').catch(()=>{});}catch(e){}
+ $('start').style.display='none';S.started=true;S.lapStart=performance.now();});
+function flash(t){const m=$('msg');m.textContent=t;m.style.opacity=1;clearTimeout(flash.t);flash.t=setTimeout(()=>m.style.opacity=0,1500);}
+const camPos=new THREE.Vector3(),camLook=new THREE.Vector3();let prev=performance.now();camera.position.set(S.x-Math.sin(S.h)*10,5,S.z-Math.cos(S.h)*10);
+function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev)/1000);prev=now;
+ if(S.started){
+  const kb=keys.L-keys.R;let target=kb!==0?kb:(tilt!=null?-tilt:0);
+  S.steer+=(target-S.steer)*Math.min(1,dt*8);
+  const n=nearest(S.x,S.z,S.seg-30,61);const off=n.d>W+0.6;
+  const maxV=off?18:55;
+  if(keys.G)S.v+=(off?14:22)*dt;else if(keys.B)S.v-=(S.v>0?40:10)*dt;else S.v-=Math.sign(S.v)*Math.min(Math.abs(S.v),6*dt);
+  if(S.v>maxV)S.v-=Math.min(S.v-maxV,40*dt);S.v=Math.max(-10,S.v);
+  const turn=S.steer*Math.min(1,Math.abs(S.v)/8)*(1.9-Math.abs(S.v)/80)*Math.sign(S.v||1);S.h+=turn*dt;
+  S.x+=Math.sin(S.h)*S.v*dt;S.z+=Math.cos(S.h)*S.v*dt;
+  // laps: checkpoint at mid
+  const ps=S.seg;S.seg=n.i;if(S.seg>N*0.45&&S.seg<N*0.55)S.mid=true;
+  if(ps>N*0.9&&S.seg<N*0.1){if(S.mid){const lt=(now-S.lapStart)/1000;last=lt;$('last').textContent=fmt(lt);
+    if(!best||lt<best){best=lt;localStorage.setItem('am_best',lt);$('best').textContent=fmt(best);flash('NEW BEST!');}else flash('LAP '+fmt(lt));
+    S.lap++;$('ln').textContent=S.lap;}S.lapStart=now;S.mid=false;}
+  else if(ps<N*0.1&&S.seg>N*0.9){S.mid=false;}
+  $('cur').textContent=fmt((now-S.lapStart)/1000)||'0:00.000';$('spd').textContent=Math.round(Math.abs(S.v)*2.237)+' mph';
+  car.position.set(S.x,off?Math.sin(now/40)*.04:0,S.z);car.rotation.set(0,S.h,0);car.rotateZ(-S.steer*Math.min(1,S.v/40)*0.06);
+  for(let i=0;i<2;i++)wheels[i].rotation.y=S.steer*0.4;
+ }
+ camPos.set(S.x-Math.sin(S.h)*10,4.2,S.z-Math.cos(S.h)*10);camera.position.lerp(camPos,Math.min(1,dt*5));
+ camLook.set(S.x+Math.sin(S.h)*4,1.2,S.z+Math.cos(S.h)*4);camera.lookAt(camLook);
+ renderer.render(scene,camera);}
+requestAnimationFrame(frame);
+</script></body></html>
