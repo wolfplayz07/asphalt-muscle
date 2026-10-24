@@ -52,3 +52,11 @@
 - Winner by RT+ET. Payouts: win $3,000, loss $800, +$1,000 perfect launch, foul $0.
 - Results: RT, ET, trap mph for both cars; Restart / Back to world; steering toggle works. sw.js am-v9 (network-first).
 - Draw calls: drag 4 (1.7k tris). Test /tmp/pwm4/d.js all PASS; t/s/w/h all PASS; 0 console errors.
+
+## Drag fixes + Dirt Rally (am-v10)
+- Drag tree: bulbs moved to the camera-facing side (they were hidden behind the backing plate), made bigger (r 0.24, 2.6 m board at z=9), MeshBasic unlit colours plus an additive glow sprite per bulb (InstancedMesh, 1 call). Unlit bulbs are dark grey with no glow.
+- CUR/LAST/BEST lap HUD hidden in non-lap races (drag, highway sprint, rally) via body.nolap.
+- Dust Devil Rally (t5): purple marker at (-470,120) on a countryside dirt road (5 s stop-to-join). Dirt loop with 8 ordered checkpoint gates; the next gate's banner glows green. Crossing a later gate shows "MISSED CHECKPOINT n! Go back", and the finish doesn't count until all gates are passed.
+- Time trial against 3 ghost rivals (no collisions). No speed cap on the rally dirt. Velocity lags heading, so the rear slides and countersteer catches it; sliding scrubs speed.
+- HUD: CP n/8, TIME, SPLIT (+/- vs best rival at that gate). Results: positions, times, splits. Payouts $6,000 / $3,500 / $1,800 / $600.
+- Draw calls: rally 22 (7.6k tris), drag 4. Tests: new r.js, updated d.js; t/s/w/h pass. w.js marker-on-paved check now expects dirt for the rally marker.
