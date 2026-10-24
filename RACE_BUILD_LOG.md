@@ -79,3 +79,17 @@
 - Fixed z-fighting between the world ground and the region ground: the desert showed green. The fix is polygonOffset on the world ground plane.
 - Draw calls / triangles: spawn 14/50.8k, desert 15/62.6k, forest 10/157k, coast 12/37k, highway race 16/66k. Ambient free-roam traffic was skipped.
 - Tests: m.js 27/27 (the map entry above wrongly said 30/30), and h, t, s, w, d, r and hs all pass with 0 console errors. sw.js is am-v12.
+
+## New cars + forest LOD (am-v13)
+- Added 4 original classic cars, each with its own low-poly silhouette. Each car is still one merged mesh plus 2 front wheels.
+  - Kestrel 66: small pony car. $20,000; top 51, acc 24, grip 2.25.
+  - Haymaker 70: pickup-style hauler with a cab and a bed. $28,000; top 49, acc 20, grip 1.85.
+  - Longshot 69: long-hood fastback coupe. $48,000; top 61, acc 20, grip 1.75.
+  - Hammerhead 72: wide-body brute with fender flares, a hood scoop and a wing. $72,000, the new top-end car; top 63, acc 26, grip 1.9.
+- Forest performance:
+  - Pines are lower-poly: 20 triangles each instead of about 52.
+  - Trees use distance LOD. Full pines are drawn within 300 m, 5-triangle cone impostors from 300 to 440 m, and nothing beyond that (the fog hides it). Instances are re-packed when the player moves more than 12 m, so each tier stays a single draw call. The tree layout is unchanged.
+  - Forest view went from 157,480 triangles / 10 draw calls to 23,680 / 11.
+- Fixed the race HUD (LAP/CUR/LAST/BEST) showing in the garage.
+- sw.js is am-v13 (network-first).
+- Tests: new nc.js (50 checks) buys, upgrades, paints, drives and runs all 5 race types with each new car, then sells one and checks the save persists. m 27, h 25, t 26, s 15, w 17, d 23, r 19 and hs all pass with 0 console errors.
