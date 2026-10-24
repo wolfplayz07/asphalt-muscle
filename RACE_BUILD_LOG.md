@@ -71,3 +71,11 @@
 - Minimap: 260 px backing canvas, scale 130/3600, shows regions, sea, lake and the new roads.
 - Draw calls/triangles: spawn 12/50.6k, desert 11/59k, forest 10/157k, coast 12/37k.
 - sw.js am-v11 (network-first). Tests: new m.js 30/30; t 26, s 15, w 17, h 18, d 23, r 19, all pass; 0 console errors.
+
+## World highway I-17 (am-v12)
+- Added a real I-17 divided highway to the open world. It has 3 lanes each way, a concrete median barrier, shoulders, white and yellow edge lines, dashed lane lines and guardrails with posts. There are 3 overpasses with abutment colliders and 4 sign gantries built from one canvas atlas. It replaces the south ring road and adds an on-ramp from the east road.
+- I-17 is road for off-road slowdown (SEGS type 'hwy') and is drawn on the minimap.
+- The Highway Sprint (t3) now races on the I-17 eastbound carriageway: race pts equal the world HWP. The open world stays visible during the sprint, and the race ground, road, kerbs and trees are skipped. Traffic, AI, the 5 s marker flow, payouts and Back to world are unchanged.
+- Fixed z-fighting between the world ground and the region ground: the desert showed green. The fix is polygonOffset on the world ground plane.
+- Draw calls / triangles: spawn 14/50.8k, desert 15/62.6k, forest 10/157k, coast 12/37k, highway race 16/66k. Ambient free-roam traffic was skipped.
+- Tests: m.js 27/27 (the map entry above wrongly said 30/30), and h, t, s, w, d, r and hs all pass with 0 console errors. sw.js is am-v12.
