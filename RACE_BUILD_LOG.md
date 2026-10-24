@@ -43,3 +43,12 @@
 - Payouts: 1st $7,000 · 2nd $4,000 · 3rd $2,000 · 4th $750 (the circuits stay at $5,000/$3,000/$1,500/$500). Restart, Back to world (clears traffic) and the steering toggle all work.
 - Draw calls: race 9 (14.5k tris), world 11–12 (~51k tris). sw.js → am-v8.
 - Tests: new highway test /tmp/pwm4/h.js all PASS. M4 26/26, M5 and steering 15/15 also pass, with 0 console errors.
+
+## Drag race (Quarter Mile)
+- New yellow marker at (0,-380) on the straight N-S highway (5 s stop-to-join); clear of buildings, garage, other markers.
+- Dedicated 402 m two-lane strip, finish gantry, grandstands; Christmas tree (pre-stage, stage, 3 amber, green, red per lane) as one InstancedMesh.
+- 1 AI rival in right lane (car perf ±5% of yours, RT 0.17–0.37 s). Cars held until green.
+- Gas before green = RED LIGHT foul (DQ, $0). RT ≤ 0.200 s = perfect launch (+$1,000, small launch boost).
+- Winner by RT+ET. Payouts: win $3,000, loss $800, +$1,000 perfect launch, foul $0.
+- Results: RT, ET, trap mph for both cars; Restart / Back to world; steering toggle works. sw.js am-v9 (network-first).
+- Draw calls: drag 4 (1.7k tris). Test /tmp/pwm4/d.js all PASS; t/s/w/h all PASS; 0 console errors.
