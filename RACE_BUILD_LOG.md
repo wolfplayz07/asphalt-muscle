@@ -60,3 +60,14 @@
 - Time trial against 3 ghost rivals (no collisions). No speed cap on the rally dirt. Velocity lags heading, so the rear slides and countersteer catches it; sliding scrubs speed.
 - HUD: CP n/8, TIME, SPLIT (+/- vs best rival at that gate). Results: positions, times, splits. Payouts $6,000 / $3,500 / $1,800 / $600.
 - Draw calls: rally 22 (7.6k tris), drag 4. Tests: new r.js, updated d.js; t/s/w/h pass. w.js marker-on-paved check now expects dirt for the rally marker.
+
+## Bigger map (am-v11)
+- World 2x per side: BOUND 880 -> 1760 (3520 x 3520 m, 4x area). Town, garage (55,-40) and all 5 markers unchanged (layout seeded from the original roads only, so it is bit-identical to the old build).
+- New regions, each one Group with merged ground and instanced props, hidden beyond 520 m:
+  - Desert & Dry Lakebed (east): cracked lakebed, mesas, 420 cacti, rocks.
+  - Pine Forest (south, +z): 2400 instanced pines, cabins, logs.
+  - Coast & Port (west): sea, beach, quay, 4 cranes, ~360 instanced containers, sheds.
+- Roads: highway extensions (outer ring, east/west/forest links), port streets, and dirt back roads (lakebed loop, logging roads, beach road). New roads are drawn in 600 m chunks, culled beyond 850 m.
+- Minimap: 260 px backing canvas, scale 130/3600, shows regions, sea, lake and the new roads.
+- Draw calls/triangles: spawn 12/50.6k, desert 11/59k, forest 10/157k, coast 12/37k.
+- sw.js am-v11 (network-first). Tests: new m.js 30/30; t 26, s 15, w 17, h 18, d 23, r 19, all pass; 0 console errors.
