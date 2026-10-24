@@ -35,3 +35,11 @@
 
 ## 2026-10-24 — Milestone 5 (medium)
 - Steering setting (Tilt or Buttons). Detailed town (houses, shops, towers, warehouses, gas stations) and expanded roads with side streets, alleys, dirt shortcuts, highway connectors.
+
+## M6a — Highway Sprint race
+- New red race marker on the east highway (600,-180), same 5s stop-to-join flow; prompt shows the 1st-place prize.
+- Point-to-point 3-lane highway sprint (~2.4 mi) against 3 AI, with lane dashes, start and finish gantries, and a HUD showing miles left.
+- 24 light traffic cars drawn as one InstancedMesh (1 draw call). They change lanes smoothly and loop. Hitting one slows or pushes you and shows "CRASH!"; the result screen shows your traffic-hit count. AI racers change lanes to get around traffic.
+- Payouts: 1st $7,000 · 2nd $4,000 · 3rd $2,000 · 4th $750 (the circuits stay at $5,000/$3,000/$1,500/$500). Restart, Back to world (clears traffic) and the steering toggle all work.
+- Draw calls: race 9 (14.5k tris), world 11–12 (~51k tris). sw.js → am-v8.
+- Tests: new highway test /tmp/pwm4/h.js all PASS. M4 26/26, M5 and steering 15/15 also pass, with 0 console errors.
