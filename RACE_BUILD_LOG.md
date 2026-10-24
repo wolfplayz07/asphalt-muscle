@@ -17,3 +17,21 @@
 - Upgrades: Engine / Transmission / Tires / Weight, 3 levels each. Paint is $500 per coat. Selling returns 60% of price plus upgrade spend.
 - The car-select menu is replaced by a title screen; the active car is used in the world and in races. sw.js cache is am-v5 and stays network-first.
 - Tested with Playwright headless: 25/25 checks pass, 0 console errors. Draw calls: world 12, race 20, garage 4.
+
+## Steering setting (Tilt / Buttons)
+- New Steering choice on the title screen, plus a "Steering: X" toggle button on the world and race HUD. The choice is saved in localStorage `am_steer` (defaults to Buttons).
+- Tilt mode: steers with DeviceOrientation. iOS permission is requested when Tilt is chosen and on start. The left/right buttons are hidden; GAS/BRAKE stay visible.
+- Buttons mode ignores tilt completely and shows the steer buttons.
+- If permission is denied, or no sensor data arrives within 1.5 s, it falls back to Buttons and shows a short notice. The keyboard works in both modes. sw.js is now am-v6 and stays network-first.
+- Tested with Playwright: 15/15 steering checks plus the full M4 regression pass, 0 console errors.
+
+## M5 — Realistic town + expanded road network
+- Buildings: one merged mesh + one 4×4 canvas texture atlas (windows, shopfronts, doors, shingles, corrugated metal, awnings, FUEL band). Types: houses (pitched roofs, gables, doors, AC units), shops (awnings, parapets, roof AC/boxes), apartment & office towers (lobbies, setbacks), warehouses (roll-up doors, vents), gas stations (kiosk, canopy, pillars, pumps). Varied palettes. Seeded stats: 131 houses, 16 shops, 2 apartments, 7 offices, 4 warehouses, 2 gas stations.
+- Placement checks a 5×5 sample grid of each footprint against road edges, keeps 30 m clear around race markers and 20 m around the garage; all buildings are solid AABB colliders.
+- Roads: town side streets + alleys, paved back roads, 6 dirt shortcuts (brown, ruts, 82% top-speed cap), 3 highway connectors. Lane markings (yellow/white centre dashes, edge lines), crosswalks at town intersections. Minimap shows every road type (dirt dashed).
+- roadInfo() → paved/dirt/off; off-road slowdown treats all new roads as road.
+- World: 12 draw calls, ~52k triangles. sw.js → am-v7 (network-first).
+- Tests: new M5 headless test all PASS (street 52 m/s paved, dirt 42.6 m/s at cap, building collision, no building/road overlap, both markers → race, garage, steering toggle, 0 console errors); M4 regression 26/26, steering 15/15.
+
+## 2026-10-24 — Milestone 5 (medium)
+- Steering setting (Tilt or Buttons). Detailed town (houses, shops, towers, warehouses, gas stations) and expanded roads with side streets, alleys, dirt shortcuts, highway connectors.
