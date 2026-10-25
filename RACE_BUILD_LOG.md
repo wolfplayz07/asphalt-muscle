@@ -128,3 +128,10 @@
 - Contact shadow blobs under every car; wet-look sheen variation on asphalt; dust (dirt) / tyre smoke (tarmac) particles when sliding.
 - Muted, more natural grading on grass, foliage and buildings (nature keeps per-instance colour variation).
 - New Graphics High/Low setting on the menu (Low: no shadows, no env map, 1.5x pixel ratio cap); defaults by GPU/DPR.
+
+## 2026-10-24 — am-v18: realistic trees, bushes & buildings
+- New foliage kit: tapered bent bark trunks with branches, clumped leaf clusters + alpha leaf cards (procedural atlas), drooping pine tiers, curved palms with fronds; wind sway in the vertex shader.
+- Random lean/rotation/hue/scale per instance; crossed-card impostors at distance (oak, poplar, pine, palm); town & forest pines and race-track trees use the kit.
+- Bushes: leafy clumps sitting flush to the ground, desert/green tints.
+- Buildings: framed windows with sills & mullions, brick/stucco/concrete panel facades, named storefronts (Mesa Diner, Rusty's Hardware, Blue Cactus Cafe, Valley Bakery), ledges & cornices, parapet caps, water tanks, extra AC units, house foundations & steps, ambient-occlusion darkening at the base.
+- Detail mesh and tree shadows only on High graphics; Low uses shorter near-LOD.
