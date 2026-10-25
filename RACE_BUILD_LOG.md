@@ -104,3 +104,15 @@
 - Performance: about 1.2k–1.5k triangles per car, 1 material. Body geometry is cached per model and paint, so AI cars and garage previews share it, and the wheel geometry is shared by every car.
 - Paint, per-car configs, AI cars and garage/dealership previews are unchanged.
 - sw.js is am-v14.
+
+## 2026-10-24 — Body finishes: carbon fiber, fiberglass & more (medium milestone, am-v15)
+- New "Body finish" section in the garage Paint tab, under the color swatches. It is saved per car in localStorage.
+  - Gloss paint: free (default).
+  - Matte: $1,500.
+  - Metallic flake: $3,000.
+  - Fiberglass: $5,000.
+  - Carbon accents (carbon hood, roof and trunk panels): $6,000.
+  - Carbon fiber (full body): $12,000.
+- Every texture is generated on a 256px canvas (twill carbon weave, chopped-strand fiberglass mat, metal flake noise). Textures are mipmapped and cached once. A tiny gradient environment map is generated with PMREM for reflections.
+- Car meshes now use 3 material groups: trim with vertex colors, paint, and accent panels. Your car and garage/dealership previews use MeshPhysicalMaterial with clearcoat. AI cars use MeshStandardMaterial. Materials are cached per finish and color, and geometry is cached per model, so there is no per-car shader or texture cost.
+- sw.js is am-v15.
