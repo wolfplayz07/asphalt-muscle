@@ -135,3 +135,10 @@
 - Bushes: leafy clumps sitting flush to the ground, desert/green tints.
 - Buildings: framed windows with sills & mullions, brick/stucco/concrete panel facades, named storefronts (Mesa Diner, Rusty's Hardware, Blue Cactus Cafe, Valley Bakery), ledges & cornices, parapet caps, water tanks, extra AC units, house foundations & steps, ambient-occlusion darkening at the base.
 - Detail mesh and tree shadows only on High graphics; Low uses shorter near-LOD.
+
+## 2026-10-24 — am-v19: elevated I-17 freeway
+- I-17 rebuilt as a continuous elevated loop (~7 m deck on pillars, concrete barriers, median) so town roads pass underneath instead of meeting it in a broken junction.
+- On/off ramps with gore chevrons and lane arrows; ground lead roads connect them to the street grid.
+- Physics follows deck/ramp height (fwSurf/fwMove); barriers and median collide; Highway Sprint (t3), AI and traffic run on the deck.
+- Old ground highway removed; minimap draws the freeway loop and ramps.
+- Headless: ramp climb reaches y=7, barrier holds, no errors. High calls 28/37/28/22, Low 26/36/28/18.
