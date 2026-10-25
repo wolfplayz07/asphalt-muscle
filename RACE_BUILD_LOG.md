@@ -121,3 +121,10 @@
 - Procedural world-space detail texture (asphalt cracks/lane wear, grass, dirt/sand/rock) blended into ground, roads, highway, canyon rock and track surfaces; fades out by 260 m.
 - New instanced nature with distance culling: oaks, poplars, palms, bushes/dry shrubs, rocks, shoreline boulders, grass tufts, flowers, barrel cacti, prickly pear (kept off roads/buildings).
 - Building facades keep the existing procedural window atlas.
+
+## 2026-10-24 — am-v17: realism pass
+- ACES filmic tone mapping, sRGB output; procedural sky gradient with sun disc; PMREM environment map built from the sky for paint/glass reflections.
+- Sun with soft PCF shadows (one 1024 map, 90 m box following the player) plus hemisphere fill; exponential haze fog matched to the horizon colour.
+- Contact shadow blobs under every car; wet-look sheen variation on asphalt; dust (dirt) / tyre smoke (tarmac) particles when sliding.
+- Muted, more natural grading on grass, foliage and buildings (nature keeps per-instance colour variation).
+- New Graphics High/Low setting on the menu (Low: no shadows, no env map, 1.5x pixel ratio cap); defaults by GPU/DPR.
