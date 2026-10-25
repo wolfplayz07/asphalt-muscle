@@ -116,30 +116,71 @@ function mergeParts(parts){const P=[],Nn=[],C=[];const col=new THREE.Color();
   for(let i=0;i<pa.length;i++){P.push(pa[i]);Nn.push(na[i]);}for(let i=0;i<pa.length/3;i++)C.push(col.r,col.g,col.b);g.dispose();p.g.dispose();}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g;}
 const VC=new THREE.MeshLambertMaterial({vertexColors:true});
-const WHEEL=new THREE.BoxGeometry(.35,.75,.75),WM=new THREE.MeshLambertMaterial({color:0x111111});
-function makeCar(def,color,parent=scene){const car=new THREE.Group();const parts=[];const o=new THREE.Object3D();
- const box=(w,h,d,x,y,z,c,rx=0)=>{o.position.set(x,y,z);o.rotation.set(rx,0,0);o.updateMatrix();parts.push({g:new THREE.BoxGeometry(w,h,d),m:o.matrix.clone(),c});};
- const body=color??def.paint??def.color,st=def.stripe,blk=0x111111,gls=0x223344,chr=0xcccccc,sh=def.shape;
- const L=sh==='coupe'?5.2:sh==='hauler'?5:sh==='long'||sh==='brute'||sh==='wide'?4.9:sh==='compact'||sh==='pony'?4.1:4.5,WD=sh==='wide'?2.35:sh==='wedge'||sh==='brute'?2.1:sh==='compact'||sh==='pony'?1.85:2;
- const bh=sh==='wedge'||sh==='pony'?.5:sh==='brute'||sh==='hauler'?.7:sh==='coupe'?.55:.6;box(WD,bh,L,0,.35+bh/2,0,body);
- if(sh==='fast'){box(1.7,.5,2.4,0,1.18,-.5,body,-.12);box(1.6,.4,.05,0,1.2,.72,gls);box(1.6,.3,.05,0,1.05,-1.75,gls);}
- else if(sh==='notch'){box(1.7,.55,1.7,0,1.22,-.2,body);box(1.6,.45,.05,0,1.22,.66,gls);box(1.6,.45,.05,0,1.22,-1.06,gls);box(.9,.25,1,0,1.05,1.4,blk);}
- else if(sh==='compact'){box(1.6,.55,1.6,0,1.2,-.3,body);box(1.5,.45,.05,0,1.2,.51,gls);box(1.5,.45,.05,0,1.2,-1.11,gls);}
- else if(sh==='wedge'){box(1.75,.42,2.6,0,1.02,-.6,body,-.08);box(1.65,.34,.05,0,1.05,.71,gls);box(1.65,.25,.05,0,.92,-1.9,gls);box(2.2,.1,.6,0,1.05,-L/2+.3,blk);box(.25,.35,.1,.8,.95,-L/2+.3,blk);box(.25,.35,.1,-.8,.95,-L/2+.3,blk);}
- else if(sh==='coupe'){box(1.6,.45,1.5,0,1.12,-1.2,body,-.05);box(1.5,.36,.05,0,1.12,-.43,gls);box(1.5,.3,.05,0,1.05,-1.97,gls);box(.5,.18,1.6,0,.98,1.1,blk);box(2.05,.1,.4,0,.95,-L/2+.25,body);}
- else if(sh==='wide'){box(1.75,.5,1.9,0,1.25,-.45,body,-.04);box(1.65,.4,.05,0,1.25,.51,gls);box(1.65,.35,.05,0,1.22,-1.41,gls);for(const s2 of[1,-1]){box(.25,.5,1.3,s2*(WD/2+.05),.75,L*.32,body);box(.25,.5,1.3,s2*(WD/2+.05),.75,-L*.32,body);}box(.9,.3,.9,0,1.05,1.3,blk);box(2.4,.12,.55,0,1.25,-L/2+.3,blk);box(.2,.4,.1,.9,1.0,-L/2+.3,blk);box(.2,.4,.1,-.9,1.0,-L/2+.3,blk);}
- else if(sh==='pony'){box(1.55,.5,1.5,0,1.05,-.45,body,-.15);box(1.45,.38,.05,0,1.08,.32,gls);box(1.45,.25,.05,0,.95,-1.22,gls);box(1.9,.08,.35,0,.88,-L/2+.2,blk);}
- else if(sh==='hauler'){box(1.85,.7,1.4,0,1.4,.35,body);box(1.75,.5,.05,0,1.45,1.06,gls);box(1.75,.4,.05,0,1.45,-.36,gls);box(WD,.45,2,0,1.27,-1.45,body);box(WD-.3,.1,1.85,0,1.42,-1.45,blk);box(WD+.1,.25,.12,0,.6,L/2+.08,chr);}
- else if(sh==='brute'){box(1.8,.55,2,0,1.32,-.5,body);box(1.7,.45,.05,0,1.32,.51,gls);box(1.7,.45,.05,0,1.32,-1.51,gls);box(.8,.45,1.2,0,1.25,1.5,chr);box(.7,.2,.06,0,1.35,2.1,blk);}
- else{box(1.75,.48,2.1,0,1.18,-.4,body);box(1.6,.4,.05,0,1.18,.66,gls);box(1.6,.4,.05,0,1.18,-1.46,gls);box(2.1,.12,.5,0,1.15,-L/2+.3,body);}
- const sy=.35+bh/2+.01;box(.35,bh+.02,L+.02,.35,sy,0,st);box(.35,bh+.02,L+.02,-.35,sy,0,st);
- box(WD+.05,.15,.15,0,.45,L/2+.05,chr);box(WD+.05,.15,.15,0,.45,-L/2-.05,chr);
- for(const s of[1,-1]){box(.35,.2,.05,s*.65,.72,L/2+.02,0xffffcc);box(.4,.15,.05,s*.6,.75,-L/2-.02,0xff2200);}
- const wx=WD/2,wz=L*.32;box(.35,.75,.75,wx,.38,-wz,blk);box(.35,.75,.75,-wx,.38,-wz,blk);
- car.add(new THREE.Mesh(mergeParts(parts),VC));
- car.wheels=[];for(const x of[wx,-wx]){const w=new THREE.Mesh(WHEEL,WM);w.position.set(x,.38,wz);car.add(w);car.wheels.push(w);}
+const CARSPEC={fast:[4.5,2,.95,1.42,1.6,.9,1.2],compact:[4.1,1.85,.95,1.45,1.3,1,.5],notch:[4.5,2,.97,1.45,1.55,1,.45],long:[4.9,2,.95,1.42,1.8,1,.55],wedge:[4.5,2.1,.9,1.33,1.7,.8,1.1],brute:[4.9,2.1,1,1.5,1.85,1.05,.5],pony:[4.1,1.85,.9,1.35,1.5,.75,1],hauler:[5,2,1.05,1.72,1.5,.8,.08],coupe:[5.2,2,.9,1.35,2.3,.7,.9],wide:[4.9,2.35,.97,1.45,1.75,.9,.7]};
+const WR=.38;
+const WHEEL=(()=>{const p=[],o=new THREE.Object3D();o.rotation.z=Math.PI/2;o.updateMatrix();const m=o.matrix.clone();
+ p.push({g:new THREE.CylinderGeometry(WR,WR,.32,14),m,c:0x151515},{g:new THREE.CylinderGeometry(WR*.6,WR*.6,.34,10),m,c:0xc8c8c8},{g:new THREE.CylinderGeometry(WR*.2,WR*.2,.36,6),m,c:0x555555});return mergeParts(p);})();
+const CARGEO=new Map();
+function carGeo(sh,body,st){const key=sh+'|'+body+'|'+st;if(CARGEO.has(key))return CARGEO.get(key);
+ const S=CARSPEC[sh]||CARSPEC.fast,[L,WD,belt,roofY,hoodL,roofL,rearL]=S,parts=[],o=new THREE.Object3D();
+ const blk=0x141414,gls=0x1d3346,chr=0xd8d8d8,H=L/2,wz=L*.32,AR=.5,y0=.3;
+ const put=(g,x,y,z,c,rx=0,ry=0,rz=0)=>{o.position.set(x,y,z);o.rotation.set(rx,ry,rz);o.updateMatrix();parts.push({g,m:o.matrix.clone(),c});};
+ const box=(w,h,d,x,y,z,c,rx=0)=>put(new THREE.BoxGeometry(w,h,d),x,y,z,c,rx);
+ const ext=(pts,w,c,b=.05,arches=false,x=0)=>{const s=new THREE.Shape();s.moveTo(pts[0][0],pts[0][1]);
+  for(let i=1;i<pts.length;i++){const p=pts[i];if(p==='arch'){continue;}s.lineTo(p[0],p[1]);}
+  const d=Math.max(.02,w-2*b);const g=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:b>0,bevelThickness:b,bevelSize:b,bevelSegments:1,curveSegments:5});
+  g.rotateY(-Math.PI/2);g.translate(d/2+x,0,0);parts.push({g,m:new THREE.Matrix4(),c});};
+ const arch=(z)=>{const a=[];for(let i=0;i<=8;i++){const t=Math.PI-i*Math.PI/8;a.push([z+Math.cos(t)*AR,y0+Math.sin(t)*AR*.95]);}return a;};
+ const cowl=H-hoodL,rake=sh==='hauler'?.35:sh==='wedge'||sh==='coupe'?.7:.55,rF=cowl-rake,rB=rF-roofL,bk=rB-rearL;
+ const bed=sh==='hauler',tail=bed?belt:belt-.02;
+ // lower body side profile with wheel arches
+ ext([[-H+.12,y0],...arch(-wz),...arch(wz),[H-.08,y0],[H,.48],[H,belt-.14],[H-.12,belt-.03],[cowl,belt+.04],[-H+.25,tail],[-H,tail-.12],[-H,.45]],WD,body,.06);
+ // inner wheel wells
+ for(const z of[wz,-wz])box(WD-.25,.5,AR*2-.05,0,y0+.22,z,blk);
+ // greenhouse glass + roof + pillars
+ const gw=WD*.8;
+ ext([[cowl+.05,belt-.02],[rF,roofY-.04],[rB,roofY-.04],[bk,belt-.02]],gw,gls,.03);
+ ext([[rF-.04,roofY-.06],[rB+.02,roofY-.06],[rB-.03,roofY+.03],[rF-.1,roofY+.03]],gw+.06,body,.02);
+ const aL=Math.hypot(cowl-rF,roofY-belt),aA=Math.atan2(cowl-rF,roofY-belt);
+ for(const s of[1,-1]){put(new THREE.BoxGeometry(.07,aL,.08),s*gw/2,(belt+roofY)/2,(cowl+rF)/2,body,-aA);
+  const cL=Math.hypot(rB-bk,roofY-belt),cA=Math.atan2(rB-bk,roofY-belt);put(new THREE.BoxGeometry(.07,cL,rearL>.8?.4:.12),s*gw/2,(belt+roofY)/2,(rB+bk)/2,body,cA);
+  box(.06,roofY-belt,.1,s*gw/2,(belt+roofY)/2,(rF+rB)/2+.1,body);
+  // mirrors
+  box(.18,.1,.12,s*(WD/2+.06),belt+.1,cowl-.05,body);box(.04,.16,.04,s*(WD/2-.02),belt+.05,cowl-.05,blk);}
+ // racing stripes (hood, roof, trunk)
+ for(const s of[.22,-.22]){const hz=(H+cowl)/2;box(.28,.02,H-cowl-.15,s,belt+.08,hz,st,Math.atan2(.07,H-cowl));box(.28,.02,roofL,s,roofY+.06,(rF+rB)/2,st);
+  if(!bed&&bk>-H+.3)box(.28,.02,bk+H-.3,s,tail+.065,(bk-H+.25)/2,st);}
+ // bumpers, grille, lights
+ box(WD+.08,.16,.16,0,.46,H+.04,chr);box(WD+.08,.16,.16,0,.46,-H-.04,chr);
+ box(WD*.62,.26,.05,0,.7,H+.075,blk);box(WD*.64,.04,.06,0,.84,H+.08,chr);box(WD*.64,.04,.06,0,.56,H+.08,chr);
+ const hl=new THREE.CylinderGeometry(.11,.11,.06,10);
+ for(const s of[1,-1]){put(hl.clone(),s*(WD/2-.25),.72,H+.08,0xfff4c0,Math.PI/2);if(sh==='fast'||sh==='brute'||sh==='notch')put(hl.clone(),s*(WD/2-.5),.72,H+.08,0xfff4c0,Math.PI/2);
+  box(sh==='wedge'||sh==='coupe'?.6:.42,.13,.05,s*(WD/2-.35),.76,-H-.075,0xd01818);box(.12,.08,.05,s*(WD/2-.1),.62,-H-.075,0xff9a1a);}
+ hl.dispose();
+ // exhaust tips
+ for(const s of[1,-1])put(new THREE.CylinderGeometry(.05,.05,.25,6),s*.5,.36,-H-.06,chr,Math.PI/2);
+ // traits
+ if(sh==='notch'||sh==='long'||sh==='brute'||sh==='wide'||sh==='fast'){const big=sh==='brute'||sh==='wide';box(big?.8:.6,big?.2:.1,big?1.1:.8,0,belt+(big?.12:.08),cowl+(H-cowl)*.45,big&&sh==='brute'?chr:sh==='wide'?blk:body);if(big)box(.6,.12,.05,0,belt+.14,cowl+(H-cowl)*.45+.56,blk);}
+ if(sh==='wedge'||sh==='wide'){const ww=sh==='wide'?WD+.1:WD-.1;box(ww,.06,.4,0,tail+.32,-H+.25,sh==='wide'?blk:body,-.12);for(const s of[1,-1])box(.06,.3,.18,s*ww*.38,tail+.15,-H+.28,blk);}
+ if(sh==='coupe'){box(.5,.07,1.4,0,belt+.06,(H+cowl)/2,blk);}
+ if(sh==='pony'){box(WD-.3,.04,.25,0,tail+.04,-H+.2,body,-.2);}
+ if(bed){box(WD-.28,.08,(bk-.05)+H-.1,0,belt-.03,(bk-.05-H+.1)/2,0x2a2018);box(WD-.15,.04,.1,0,belt+.01,-H+.08,body);box(WD+.1,.14,.12,0,.92,bk-.02,chr);}
+ if(sh==='wide'){for(const z of[wz,-wz])for(const s of[1,-1])ext([[z-.7,.35],[z-.55,.88],[z+.55,.88],[z+.7,.35],[z+.5,.35],[z+.42,.62],[z-.42,.62],[z-.5,.35]],.16,body,.02,false,s*(WD/2+.02));}
+ // rear wheels (fixed)
+ for(const s of[1,-1])parts.push({g:WHEEL.clone(),m:new THREE.Matrix4().makeTranslation(s*(WD/2-.08),WR,-wz),c:-1});
+ const g=mergeCar(parts);g.userData={WD,wz};CARGEO.set(key,g);return g;}
+// like mergeParts but c=-1 keeps existing vertex colors
+function mergeCar(parts){const P=[],Nn=[],C=[];const col=new THREE.Color();
+ for(const p of parts){let g=p.g.index?p.g.toNonIndexed():p.g;g.applyMatrix4(p.m);const pa=g.attributes.position.array,na=g.attributes.normal.array;
+  for(let i=0;i<pa.length;i++){P.push(pa[i]);Nn.push(na[i]);}
+  if(p.c===-1){const ca=g.attributes.color.array;for(let i=0;i<ca.length;i++)C.push(ca[i]);}else{col.set(p.c);for(let i=0;i<pa.length/3;i++)C.push(col.r,col.g,col.b);}
+  if(g!==p.g)g.dispose();p.g.dispose();}
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.computeBoundingSphere();return g;}
+function makeCar(def,color,parent=scene){const car=new THREE.Group();const body=color??def.paint??def.color;
+ const g=carGeo(def.shape,body,def.stripe);car.add(new THREE.Mesh(g,VC));const{WD,wz}=g.userData;
+ car.wheels=[];for(const s of[1,-1]){const w=new THREE.Mesh(WHEEL,VC);w.position.set(s*(WD/2-.08),WR,wz);car.add(w);car.wheels.push(w);}
  parent.add(car);return car;}
-function disposeCar(m){if(!m)return;m.parent&&m.parent.remove(m);m.children[0].geometry.dispose();}
+function disposeCar(m){if(!m)return;m.parent&&m.parent.remove(m);}
 function disposeAll(o){o.traverse(m=>{if(m.geometry)m.geometry.dispose();if(m.material){[].concat(m.material).forEach(x=>{if(x.map)x.map.dispose();x.dispose();});}});}
 // ================= RACE TRACKS =================
 const TRACKS=[

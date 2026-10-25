@@ -93,3 +93,14 @@
 - Fixed the race HUD (LAP/CUR/LAST/BEST) showing in the garage.
 - sw.js is am-v13 (network-first).
 - Tests: new nc.js (50 checks) buys, upgrades, paints, drives and runs all 5 race types with each new car, then sells one and checks the save persists. m 27, h 25, t 26, s 15, w 17, d 23, r 19 and hs all pass with 0 console errors.
+
+## 2026-10-24 — Real car bodies (medium milestone)
+- Replaced the boxy car builder with procedural muscle-car bodies:
+  - Side-profile body shapes extruded with beveled edges, with a hood, cowl, trunk deck and cut-out wheel arches (dark wheel wells).
+  - Tinted glass greenhouse with windshield rake, a fastback or notchback rear glass per model, and A/B/C pillars and roof in body color.
+  - Chrome bumpers, a grille with chrome trim, round headlights (quad on Bandit, Ridgeback and Brute), taillights and turn signals, side mirrors, exhaust tips, and racing stripes on hood, roof and trunk.
+  - Round wheels with a tire, chrome rim and hub. Front wheels still steer.
+- Per-model traits: hood scoops (Ridgeback, Thunder, Bandit), a chrome shaker scoop (Brute), a rear wing (Stinger), a pickup bed (Haymaker), a long hood with a blackout panel (Longshot), and a wide body with fender flares, a big scoop and a wing (Hammerhead).
+- Performance: about 1.2k–1.5k triangles per car, 1 material. Body geometry is cached per model and paint, so AI cars and garage previews share it, and the wheel geometry is shared by every car.
+- Paint, per-car configs, AI cars and garage/dealership previews are unchanged.
+- sw.js is am-v14.
