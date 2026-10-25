@@ -116,3 +116,8 @@
 - Every texture is generated on a 256px canvas (twill carbon weave, chopped-strand fiberglass mat, metal flake noise). Textures are mipmapped and cached once. A tiny gradient environment map is generated with PMREM for reflections.
 - Car meshes now use 3 material groups: trim with vertex colors, paint, and accent panels. Your car and garage/dealership previews use MeshPhysicalMaterial with clearcoat. AI cars use MeshStandardMaterial. Materials are cached per finish and color, and geometry is cached per model, so there is no per-car shader or texture cost.
 - sw.js is am-v15.
+
+## 2026-10-24 — am-v16: world textures & nature
+- Procedural world-space detail texture (asphalt cracks/lane wear, grass, dirt/sand/rock) blended into ground, roads, highway, canyon rock and track surfaces; fades out by 260 m.
+- New instanced nature with distance culling: oaks, poplars, palms, bushes/dry shrubs, rocks, shoreline boulders, grass tufts, flowers, barrel cacti, prickly pear (kept off roads/buildings).
+- Building facades keep the existing procedural window atlas.
