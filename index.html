@@ -510,12 +510,13 @@ const RAMPS=[];{const L=28,M=16;// pick ramp spots whose footprint and ground le
  for(const r of RAMPS){const [fx,fz]=fwAt(r.i0,r.s*(FDW+FRW/2)),a=FW[(r.i0%FWN+FWN)%FWN],px=fx-a.t.x*30,pz=fz-a.t.z*30;let best=null,bd=1e9;
   for(const [pl,w,t] of RNET){if(t==='dirt'&&best)continue;for(let i=0;i<pl.length-1;i++){const x0=pl[i][0],z0=pl[i][1],dx=pl[i+1][0]-x0,dz=pl[i+1][1]-z0,l2=dx*dx+dz*dz;let u=((px-x0)*dx+(pz-z0)*dz)/l2;u=Math.max(0,Math.min(1,u));const qx=x0+dx*u,qz=z0+dz*u,d=Math.hypot(qx-px,qz-pz);if(d<bd){bd=d;best=[qx,qz];}}}
   r.lead=[[fx,fz],[px,pz]];if(best&&bd<420)r.lead.push(best);RNET.push([r.lead,ST,'st']);}}
+const rampH=(r,k)=>{if(k>=r.L)return FH;const t=Math.max(0,k/r.L);return FH*t*t*(3-2*t);},rampW=(r,k)=>k<r.L?FRW:FRW*Math.max(0,1-(k-r.L)/r.M);
 function fwSurf(x,z,yp){const q=fwNear(x,z);if(!q)return 0;const {i,o}=q;let best=0;if(Math.abs(o)<=FDW&&FH<=yp+1.2)best=FH;
- for(const r of RAMPS){const so=r.s*o;if(so<FDW-.1||so>FDW+FRW+.1)continue;let k=i-r.i0;if(k<-FWN/2)k+=FWN;if(k>FWN/2)k-=FWN;if(k<0||k>r.L+r.M)continue;const h=k>=r.L?FH:FH*k/r.L;if(h<=yp+1.2&&h>best)best=h;}return best;}
+ for(const r of RAMPS){const so=r.s*o;let k=i-r.i0;if(k<-FWN/2)k+=FWN;if(k>FWN/2)k-=FWN;if(k<0||k>r.L+r.M)continue;if(so<FDW-.1||so>FDW+rampW(r,k)+.1)continue;const h=rampH(r,k);if(h<=yp+1.2&&h>best)best=h;}return best;}
 // move a car on/under the freeway: barriers stop you leaving the deck or ramps (slide along them), median barrier splits the carriageways
 function fwMove(r,x0,z0,dt){const yp=r.y||0;let y=fwSurf(r.x,r.z,yp);const bad=(x,z,h)=>{if(yp>1.5&&h<yp-1.5)return true;if(yp>FH-1){const a=fwNear(x0,z0),b=fwNear(x,z);if(a&&b&&Math.abs(b.o)<6&&(a.o>0)!==(b.o>0))return true;}return false;};
  if(bad(r.x,r.z,y)){const q=fwNear(x0,z0),t=q?q.a.t:null,dx=r.x-x0,dz=r.z-z0,dp=t?dx*t.x+dz*t.z:0;r.x=x0+(t?t.x*dp:0);r.z=z0+(t?t.z*dp:0);y=fwSurf(r.x,r.z,yp);
-  if(bad(r.x,r.z,y)){r.x=x0;r.z=z0;y=yp;}r.v*=1-Math.min(.5,dt*6);r.wallT=performance.now();}
+  if(bad(r.x,r.z,y)){r.x=x0;r.z=z0;y=yp;}const dl=Math.hypot(dx,dz),gl=dl>1e-4?Math.abs(dp)/dl:0;r.v*=1-Math.min(.3,dt*(.6+5*(1-gl)));if(t&&r.h!==undefined&&gl>.5){const th=Math.atan2(t.x,t.z)+(dp<0?Math.PI:0);let dh=th-r.h;dh=Math.atan2(Math.sin(dh),Math.cos(dh));r.h+=dh*Math.min(1,dt*4);}r.wallT=performance.now();}
  const d=Math.hypot(r.x-x0,r.z-z0);r.pitch=(r.pitch||0)+((d>.01?Math.atan2(y-yp,d):0)-(r.pitch||0))*Math.min(1,dt*10);r.y=y;}
 const SEGS=[];for(const [pl,w,t] of RNET)for(let i=0;i<pl.length-1;i++)SEGS.push([pl[i][0],pl[i][1],pl[i+1][0],pl[i+1][1],w,t]);
 // Highway Sprint: the +side carriageway of the elevated loop (centre o=+6.8), ~62% of the way round
@@ -593,40 +594,78 @@ const LAKE={x:1430,z:-700,rx:190,rz:250},WATERX=-1480;
 function buildFreeway(){const CK=60,mat=detailize(new THREE.MeshLambertMaterial({vertexColors:true,side:THREE.DoubleSide}),.25),col=new THREE.Color(),colB=[];
  const at=(i,o,y)=>{const [x,z]=fwAt(i,o);return[x,y,z];};let P,C;
  const quad=(a,b,c,d,cl)=>{col.set(cl);P.push(...a,...b,...c,...a,...c,...d);for(let k=0;k<6;k++)C.push(col.r,col.g,col.b);};
- const rib=(i,o0,o1,y,cl,y1=y)=>quad(at(i,o0,y),at(i+1,o0,y1),at(i+1,o1,y1),at(i,o1,y),cl);
- const wq=(i,o,y0,y1,cl,z0=y0,z1=y1)=>quad(at(i,o,y0),at(i+1,o,z0),at(i+1,o,z1),at(i,o,y1),cl);
+ const rib=(i,o0,o1,y,cl,y1=y,st=1)=>quad(at(i,o0,y),at(i+st,o0,y1),at(i+st,o1,y1),at(i,o1,y),cl);
+ const wq=(i,o,y0,y1,cl,z0=y0,z1=y1,st=1)=>quad(at(i,o,y0),at(i+st,o,z0),at(i+st,o,z1),at(i,o,y1),cl);
+ const jer=(i,o,s,y0,y1,st=1)=>{// low jersey barrier ~0.95 m, sloped face toward traffic
+  wq(i,o,y0,y0+.35,0xb4b4ac,y1,y1+.35,st);quad(at(i,o,y0+.35),at(i+st,o,y1+.35),at(i+st,o+s*.22,y1+.95),at(i,o+s*.22,y0+.95),0xc4c4bc);
+  wq(i,o+s*.22,y0-.1,y0+.95,0xaaaaa2,y1-.1,y1+.95,st);};
+ const xj=(i,o0,o1,y)=>{const a=FW[(i%FWN+FWN)%FWN],t=a.t;const A=at(i,o0,y),B=at(i,o1,y);quad([A[0]-t.x*.18,y,A[2]-t.z*.18],[A[0]+t.x*.18,y,A[2]+t.z*.18],[B[0]+t.x*.18,y,B[2]+t.z*.18],[B[0]-t.x*.18,y,B[2]-t.z*.18],0x1e1e20);};
  const inMerge=(i,s)=>RAMPS.some(r=>{if(r.s!==s)return false;let k=((i-r.i0)%FWN+FWN)%FWN;return k>=r.L&&k<r.L+r.M;});
- const o3=new THREE.Object3D(),parts=[];const bx=(w,h,d,i,off,y,c)=>{const a=FW[i%FWN],[x,z]=fwAt(i,off);o3.position.set(x,y,z);o3.rotation.set(0,Math.atan2(a.t.x,a.t.z),0);o3.updateMatrix();parts.push({g:new THREE.BoxGeometry(w,h,d),m:o3.matrix.clone(),c});};
- // pillars + hammerhead caps (skipped where a ground road passes underneath)
- for(let i=0;i<FWN;i+=8){const [x,z]=fwAt(i,0);if(rnetEdge(x,z)<2.5)continue;bx(2,FH-2.2,2,i,0,(FH-2.2)/2,0x9b9b94);bx(2.4,1,24,i,0,FH-1.7,0x8f8f88);colB.push([x,z,2.2,2.2]);}
- // sign gantries
- const SGN=[[Math.floor(FWN*.02),0],[Math.floor(FWN*.27),1],[Math.floor(FWN*.5),2],[Math.floor(FWN*.75),3]];
- for(const [i] of SGN){for(const off of[FDW+.4,-FDW-.4])bx(.6,10,.6,i,off,FH-1.2+5,0x8c9196);bx(.7,.7,2*FDW+1.6,i,0,FH+8.6,0x8c9196);}
+ const o3=new THREE.Object3D(),parts=[];
+ const bx=(w,h,d,i,off,y,c)=>{const a=FW[(i%FWN+FWN)%FWN],[x,z]=fwAt(i,off);o3.position.set(x,y,z);o3.rotation.set(0,Math.atan2(a.t.x,a.t.z),0);o3.updateMatrix();parts.push({g:new THREE.BoxGeometry(w,h,d),m:o3.matrix.clone(),c});};
+ const cy=(r,h,i,off,y,c,seg=10)=>{const [x,z]=fwAt(i,off);o3.position.set(x,y,z);o3.rotation.set(0,0,0);o3.updateMatrix();parts.push({g:new THREE.CylinderGeometry(r,r*1.06,h,seg,1,true),m:o3.matrix.clone(),c});};
+ const SB=FH-.45,GB=SB-1.25,CAPB=GB-1.1;// slab bottom, girder bottom, pier-cap bottom
+ // piers: round columns ~25 m apart under a T cap, open between (skipped/shifted where a ground road passes)
+ for(let i=0;i<FWN;i+=5){let j=-1;for(const d of[0,1,-1,2,-2]){const [x,z]=fwAt(i+d,0);if(rnetEdge(x,z)>=3){j=i+d;break;}}if(j<0)continue;
+  const [x,z]=fwAt(j,0);for(const o of[-5.5,5.5]){cy(.85,CAPB,j,o,CAPB/2,0xa3a39c,8);const [px,pz]=fwAt(j,o);colB.push([px,pz,1.9,1.9]);}
+  bx(1.8,1.1,2*FDW-1,j,0,CAPB+.55,0x9c9c95);}
+ // light poles on the median
+ for(let i=3;i<FWN;i+=10){cy(.13,9,i,0,FH+.95+4.5,0x8a8f94,4);for(const s of[1,-1]){bx(.12,.12,3.2,i,s*1.6,FH+9.4,0x8a8f94);bx(.5,.18,1,i,s*3.1,FH+9.3,0xf4efd8);}}
+ // sign gantries over the deck
+ const SGN=[[Math.floor(FWN*.02),0],[Math.floor(FWN*.27),1],[Math.floor(FWN*.5),2],[Math.floor(FWN*.75),3]],SL=[];
+ const gantry=i=>{for(const off of[FDW+.6,-FDW-.6])bx(.5,9.4,.5,i,off,FH+4.7,0x7f858b);bx(.6,.9,2*FDW+1.8,i,0,FH+8.9,0x7f858b);};
+ for(const [i,k] of SGN){gantry(i);SL.push([i,1,k],[i,-1,k]);}
  const fwg=new THREE.Group();fwg.name='I-17';openWorld.add(fwg);
- // ramps: deck slab with retaining walls down to the ground, outer barrier, edge lines, gore stripes
- for(const r of RAMPS){P=[];C=[];const s=r.s,oi=s*FDW,oo=s*(FDW+FRW),h=k=>k>=r.L?FH:FH*k/r.L;
-  for(let k=0;k<r.L+r.M;k++){const i=r.i0+k,y0=h(k)+.02,y1=h(k+1)+.02;rib(i,oi,oo,y0,0x3a3a3e,y1);wq(i,oo,0,y0,0xa9a9a1,0,y1);if(k<r.L)wq(i,oi,0,y0,0xa9a9a1,0,y1);
-   wq(i,oo-s*.3,y0,y0+1,0xc2c2ba,y1,y1+1);rib(i,oo-s*.3,oo,y0+1,0xd0d0c8,y1+1);rib(i,oo-s*.9,oo-s*.6,y0+.03,0xf4f4f4,y1+.03);
-   if(k<r.L)rib(i,oi+s*.6,oi+s*.9,y0+.03,0xf4f4f4,y1+.03);else if(k%2===0)rib(i,oi-s*.15,oi+s*.15,y0+.03,0xf4f4f4,y1+.03);}
+ // ramps: low end on a grassy earth embankment, high end a slab on round piers; taper into the deck
+ const EN=['Mesa Verde Rd','Coyote Flats','Harbor Blvd','Juniper Ave','Red Rock Pkwy','Saguaro Dr','Lakeview Rd','Old Mill St'];let rn=0;
+ for(const r of RAMPS){P=[];C=[];const s=r.s,oi=s*FDW;
+  for(let k=0;k<r.L+r.M;k++){const i=r.i0+k,y0=rampH(r,k)+.02,y1=rampH(r,k+1)+.02,w0=rampW(r,k),w1=rampW(r,k+1),oo=s*(FDW+w0),oo1=s*(FDW+w1);
+   quad(at(i,oi,y0),at(i+1,oi,y1),at(i+1,oo1,y1),at(i,oo,y0),0x3a3a3e);
+   rib(i,oi+s*.6,oi+s*.85,y0+.03,0xf4f4f4,y1+.03);// edge line
+   quad(at(i,oo-s*.85,y0+.03),at(i+1,oo1-s*.85,y1+.03),at(i+1,oo1-s*.6,y1+.03),at(i,oo-s*.6,y0+.03),0xf4f4f4);
+   if(k<r.L*.55){// embankment: sloped grass both sides
+    const e0=y0*1.8,e1=y1*1.8;quad(at(i,oo,y0),at(i+1,oo1,y1),at(i+1,oo1+s*e1,-.05),at(i,oo+s*e0,-.05),0x6f8e4c);
+    quad(at(i,oi,y0),at(i+1,oi,y1),at(i+1,oi-s*Math.min(e1,4),Math.max(0,y1-4/1.8)-.05),at(i,oi-s*Math.min(e0,4),Math.max(0,y0-4/1.8)-.05),0x6a8848);
+    if(k%3===0)wq(i,oo+s*.05,y0-.6,y0+.15,0xa8a8a0,y1-.6,y1+.15);// small kerb/retaining lip
+   }else{// slab on piers
+    quad(at(i,oi,y0-.45),at(i+1,oi,y1-.45),at(i+1,oo1,y1-.45),at(i,oo,y0-.45),0x55554f);
+    quad(at(i,oo,y0-.45),at(i+1,oo1,y1-.45),at(i+1,oo1,y1+.02),at(i,oo,y0+.02),0xb8b8b0);
+    if(k<r.L)wq(i,oi,y0-.45,y0+.02,0xb8b8b0,y1-.45,y1+.02);
+    const gm=(oi+oo)/2;wq(i,gm,y0-1.2,y0-.45,0x8e8e88,y1-1.2,y1-.45);rib(i,gm-.35,gm+.35,y0-1.2,0x7d7d77,y1-1.2);
+    if(k%5===0&&k<r.L&&y0>3){const [x,z]=fwAt(i,gm);if(rnetEdge(x,z)>=2){cy(.7,y0-1.2,i,gm,(y0-1.2)/2,0xa3a39c);colB.push([x,z,1.6,1.6]);}}}
+   quad(at(i,oo,y0),at(i+1,oo1,y1),at(i+1,oo1-s*.3,y1+.95),at(i,oo-s*.3,y0+.95),0xc4c4bc);quad(at(i,oo-s*.3,y0+.95),at(i+1,oo1-s*.3,y1+.95),at(i+1,oo1-s*.5,y1+.95),at(i,oo-s*.5,y0+.95),0xd2d2ca);
+   if(k<r.L&&y0>.6)jer(i,oi+s*.5,-s,y0,y1);
+   if(k%8===4)xj(i,oi,oo,y0+.04);}
   for(let k=r.L;k<r.L+6;k++)if(k%2===0)quad(at(r.i0+k,oi+s*.9,FH+.05),at(r.i0+k+1,oi+s*.9,FH+.05),at(r.i0+k+2,oi-s*1.2,FH+.05),at(r.i0+k+1,oi-s*1.2,FH+.05),0xf4f4f4);// gore chevrons
+  // green exit / entrance signs
+  const nm=EN[rn++%EN.length];r.name=nm;
+  if(s<0){const gi=r.i0+r.L+r.M+10;gantry(gi);SL.push([gi,-1,{t:'EXIT '+(10+rn*3)+'  →',b:nm}]);}
+  else{const fi=r.i0+3,o=s*(FDW+FRW+1.5);bx(.4,6.4,.4,fi,o,3.2,0x7f858b);bx(.4,.5,FRW+1.8,fi,o-s*(FRW+1.8)/2,6.1,0x7f858b);SL.push([fi,0,{t:'I-17 LOOP',b:nm+' ON-RAMP'},s*(FDW+FRW/2),y=>rampH(r,3)+5.2]);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.computeVertexNormals();
-  const m=new THREE.Mesh(g,mat);m.castShadow=m.receiveShadow=true;const [cx,cz]=fwAt(r.i0+r.L/2,oo);m.userData.c=[cx,cz];fwg.add(m);openWorld.userData.chunks.push(m);}
+  const m=new THREE.Mesh(g,mat);m.castShadow=m.receiveShadow=true;const [cx,cz]=fwAt(r.i0+r.L/2,s*(FDW+FRW));m.userData.c=[cx,cz];fwg.add(m);openWorld.userData.chunks.push(m);}
+ // mainline deck: thin slab, dark underside, I-girders, fascia with drip lip, low jersey barriers, joints
+ let rs=5;const rnd=()=>(rs=(rs*16807)%2147483647)/2147483647;
  for(let c0=0;c0<FWN;c0+=CK){P=[];C=[];const c1=Math.min(FWN,c0+CK);
-  for(let i=c0;i<c1;i++){const T=FH+.01,M=FH+.04;
-   rib(i,-FDW,FDW,T,0x38383c);rib(i,-FDW,FDW,FH-1.2,0x8d8d86);for(const s of[1,-1])wq(i,s*FDW,FH-1.2,FH,0xb0b0a8);// deck, soffit, fascia
+  for(let i=c0;i<c1;i++){const T=FH+.01,M=FH+.04,pan=Math.floor(i/6),v=.94+((pan*9301+49297)%233280)/233280*.1;col.setRGB(.22*v,.22*v,.235*v);const dk=col.getHex();
+   rib(i,-FDW,FDW,T,dk);rib(i,-FDW,FDW,SB,0x4d4d49);
+   for(const s of[1,-1]){wq(i,s*FDW,SB,T+.02,0xc0c0b8);wq(i,s*(FDW-.25),SB-.12,SB,0xa5a59e);rib(i,s*FDW,s*(FDW-.25),SB-.12,0x9a9a93);}// fascia + drip
+   if(i%2===0)for(const g of[-10.2,-3.6,3.6,10.2]){wq(i,g,GB,SB,0x878781,GB,SB,2);rib(i,g-.4,g+.4,GB,0x76766f,GB,2);rib(i,g-.25,g+.25,SB-.08,0x76766f,SB-.08,2);}// I-girders (web + flanges)
    rib(i,.7,1,M,0xf2c94c);rib(i,-.7,-1,M,0xf2c94c);rib(i,12.4,12.7,M,0xf4f4f4);rib(i,-12.4,-12.7,M,0xf4f4f4);
    if(i%2===0)for(const o of[4.6,8.5,-4.6,-8.5])rib(i,o-.13,o+.13,M,0xeeeeee);
-   wq(i,.3,T,T+.9,0xb9b9b0);wq(i,-.3,T,T+.9,0xb9b9b0);rib(i,-.3,.3,T+.9,0xd0d0c8);// median barrier
-   for(const s of[1,-1])if(!inMerge(i,s)){wq(i,s*(FDW-.4),T,T+1,0xc2c2ba);wq(i,s*FDW,T,T+1,0xb0b0a8);rib(i,s*(FDW-.4),s*FDW,T+1,0xd0d0c8);}}// jersey barriers (open at merges)
+   if(i%6===0)xj(i,-FDW,FDW,T+.02);// expansion joint
+   for(const s of[1,-1])quad(at(i,s*.42,T),at(i+1,s*.42,T),at(i+1,s*.15,T+.95),at(i,s*.15,T+.95),0xc4c4bc);rib(i,-.15,.15,T+.95,0xd2d2ca);// median jersey
+   for(const s of[1,-1])if(!inMerge(i,s))jer(i,s*(FDW-.42),s,T,T);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));g.computeVertexNormals();
   const m=new THREE.Mesh(g,mat);m.castShadow=m.receiveShadow=true;const mid=FW[Math.floor((c0+c1)/2)];m.userData.c=[mid.x,mid.z];fwg.add(m);openWorld.userData.chunks.push(m);}
  const em=new THREE.Mesh(mergeParts(parts),VC);em.castShadow=true;fwg.add(em);
- // signs
- const cv=document.createElement('canvas');cv.width=512;cv.height=512;const cx=cv.getContext('2d');
+ // signs: one canvas atlas, rows = messages
  const TX=[['I-17 LOOP','Desert · Dry Lake'],['NEXT EXIT','Port · Coast  1 MI'],['I-17 NORTH','Pine Forest'],['SPEED LIMIT','75']];
- TX.forEach((t,k)=>{const y=k*128;cx.fillStyle='#0d6b3a';cx.fillRect(0,y,512,128);cx.strokeStyle='#fff';cx.lineWidth=6;cx.strokeRect(8,y+8,496,112);cx.fillStyle='#fff';cx.textAlign='center';cx.font='bold 46px sans-serif';cx.fillText(t[0],256,y+56);cx.font='bold 36px sans-serif';cx.fillText(t[1],256,y+104);});
- const sp=[],su=[];for(const [i,k] of SGN)for(const sd of[1,-1]){const a=FW[i],h=Math.atan2(a.t.x,a.t.z)+(sd>0?Math.PI:0),g=new THREE.PlaneGeometry(11,3).toNonIndexed(),[x,z]=fwAt(i,sd*6.8);o3.position.set(x-a.t.x*.5*sd,FH+6.9,z-a.t.z*.5*sd);o3.rotation.set(0,h,0);o3.updateMatrix();g.applyMatrix4(o3.matrix);
-  sp.push(...g.attributes.position.array);const uv=g.attributes.uv.array;for(let j=0;j<uv.length;j+=2)su.push(uv[j],(3-k)/4+uv[j+1]/4);}
+ for(const e of SL)if(typeof e[2]==='object'){TX.push([e[2].t,e[2].b]);e[2]=TX.length-1;}
+ const RWS=TX.length,cv=document.createElement('canvas');cv.width=512;cv.height=128*RWS;const cx=cv.getContext('2d');
+ TX.forEach((t,k)=>{const y=k*128;cx.fillStyle='#0d6b3a';cx.fillRect(0,y,512,128);cx.strokeStyle='#fff';cx.lineWidth=6;cx.strokeRect(8,y+8,496,112);cx.fillStyle='#fff';cx.textAlign='center';cx.font='bold 46px sans-serif';cx.fillText(t[0],256,y+56,480);cx.font='bold 36px sans-serif';cx.fillText(t[1],256,y+104,480);});
+ const sp=[],su=[];for(const [i,sd,k,off,yf] of SL){const a=FW[(i%FWN+FWN)%FWN],h=Math.atan2(a.t.x,a.t.z)+(sd>0?Math.PI:0),g=new THREE.PlaneGeometry(off!==undefined?6:11,off!==undefined?1.8:3).toNonIndexed(),[x,z]=fwAt(i,off!==undefined?off:sd*6.8);
+  o3.position.set(x-a.t.x*.5*(sd||1),off!==undefined?yf():FH+6.9,z-a.t.z*.5*(sd||1));o3.rotation.set(0,h,0);o3.updateMatrix();g.applyMatrix4(o3.matrix);
+  sp.push(...g.attributes.position.array);const uv=g.attributes.uv.array;for(let j=0;j<uv.length;j+=2)su.push(uv[j],(RWS-1-k)/RWS+uv[j+1]/RWS);}
  const sg=new THREE.BufferGeometry();sg.setAttribute('position',new THREE.Float32BufferAttribute(sp,3));sg.setAttribute('uv',new THREE.Float32BufferAttribute(su,2));
  const signs=new THREE.Mesh(sg,new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(cv),side:THREE.DoubleSide}));signs.name='hwSigns';openWorld.add(signs);
  return colB;}

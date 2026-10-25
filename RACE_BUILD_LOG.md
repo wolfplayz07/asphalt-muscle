@@ -142,3 +142,12 @@
 - Physics follows deck/ramp height (fwSurf/fwMove); barriers and median collide; Highway Sprint (t3), AI and traffic run on the deck.
 - Old ground highway removed; minimap draws the freeway loop and ramps.
 - Headless: ramp climb reaches y=7, barrier holds, no errors. High calls 28/37/28/22, Low 26/36/28/18.
+
+## 2026-10-24 — am-v20: freeway reads as a real overpass
+- Mainline deck is now a thin 0.45 m slab with dark underside, drip-lip fascia and four I-girders; open air between piers (no skirts/fill).
+- Round twin columns under T caps every ~25 m (shifted to clear ground roads); low ~0.95 m jersey barriers at edges and median.
+- Concrete panel tint variation, expansion joints every 30 m, median light poles.
+- Ramps: grassy earth embankments at the low end, slab on round piers at the high end, smoothstep grade, width tapers into the deck.
+- Green exit gantries before off-ramps and on-ramp signs with made-up names (Mesa Verde Rd, Coyote Flats, Harbor Blvd...).
+- Ramp-top slowdown fixed: smooth grade + barrier contact now scrapes speed by impact angle and steers along the wall (52→~42 mph instead of 52→3).
+- Same meshes at all distances (chunks cull at 850 m), so far view matches near.
