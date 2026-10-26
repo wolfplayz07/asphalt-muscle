@@ -151,3 +151,8 @@
 - Green exit gantries before off-ramps and on-ramp signs with made-up names (Mesa Verde Rd, Coyote Flats, Harbor Blvd...).
 - Ramp-top slowdown fixed: smooth grade + barrier contact now scrapes speed by impact angle and steers along the wall (52→~42 mph instead of 52→3).
 - Same meshes at all distances (chunks cull at 850 m), so far view matches near.
+
+## 2026-10-25 — am-v21: freeway underside fix + highways lead somewhere
+- Fixed iPhone underside rendering (black with white streaks, hanging low): underside geometry (soffit, drip lip, girders, ramp soffits) moved to its own lit concrete mesh (Lambert, emissive floor, polygonOffset, no detail texture, no shadow receive). Removed the girder top flange that z-fought the slab. Deck raised FH 7→7.6 m, so the bottom of the girders clears roads by about 5.9 m. Shadow bias -0.0006 / normalBias 0.04. Camera near 0.5 / far 480, no log depth buffer.
+- Added 5 full diamond interchanges (XCH), each with an on and off ramp in both directions. The cross street links to a named destination with a landmark (truck stop, quarry, harbor, lodge, campground), and the inner side ties into the street grid. Audit: no dead ends, 0 low-clearance points.
+- Exit gantries show the exit number and destination, and on-ramps show I-17 LOOP with the direction. Sign backs are blank grey. Destinations are labeled on the minimap.
