@@ -538,6 +538,24 @@ RNET.push(
  [[[1178,-1080],[1550,-1020],[1650,-700],[1560,-380],[1300,-300]],DT,'dirt'],[[[760,420],[1000,520],[1350,300]],DT,'dirt'],
  [[[-300,1300],[-400,1550],[0,1610],[400,1520],[700,1320]],DT,'dirt'],[[[-800,1250],[-1100,1520]],DT,'dirt'],
  [[[-1300,300],[-1435,600]],DT,'dirt'],[[[-1300,300],[-1435,0],[-1435,-900],[-1200,-1100]],DT,'dirt']);
+// ---- round every dirt back road: circular fillet arcs at each bend (radius up to 75 m, limited by segment length), then
+// split the coast road into concrete (through the port apron) and sand (along the beach) ----
+{const fillet=(pl,R0=75)=>{if(pl.length<3)return pl;const o=[pl[0]];
+  for(let i=1;i<pl.length-1;i++){const [ax,az]=o[o.length-1],[bx,bz]=pl[i],[cx,cz]=pl[i+1];
+   let ux=bx-ax,uz=bz-az,l1=Math.hypot(ux,uz),vx=cx-bx,vz=cz-bz,l2=Math.hypot(vx,vz);ux/=l1;uz/=l1;vx/=l2;vz/=l2;
+   const phi=Math.acos(Math.max(-1,Math.min(1,ux*vx+uz*vz)));if(phi<.03){o.push(pl[i]);continue;}
+   const tq=Math.tan(phi/2),t=Math.min(R0*tq,.48*l1,.48*(i+1===pl.length-1?l2:l2/2)),R=t/tq,sg=Math.sign(ux*vz-uz*vx);
+   const t1x=bx-ux*t,t1z=bz-uz*t,nx=-uz*sg,nz=ux*sg,cxr=t1x+nx*R,czr=t1z+nz*R,n=Math.max(3,Math.ceil(phi/(6*Math.PI/180)));
+   for(let k=0;k<=n;k++){const a=sg*phi*k/n,ca=Math.cos(a),sa=Math.sin(a),rx=t1x-cxr,rz=t1z-czr;o.push([cxr+rx*ca-rz*sa,czr+rx*sa+rz*ca]);}}
+  o.push(pl[pl.length-1]);return o;};
+ const APRON=[-1485,-495,-1225,-55],beach=(x,z)=>x<-1305,inApron=(x,z)=>x>=APRON[0]-4&&x<=APRON[2]&&z>=APRON[1]-4&&z<=APRON[3]+4;
+ const out=[];for(let r=RNET.length-1;r>=0;r--){const [pl,w,t]=RNET[r];if(t!=='dirt')continue;RNET.splice(r,1);
+  let p=fillet(pl),q=[p[0]];for(let i=1;i<p.length;i++){const [ax,az]=p[i-1],[bx,bz]=p[i],L=Math.hypot(bx-ax,bz-az),n=Math.ceil(L/12);for(let k=1;k<=n;k++)q.push([ax+(bx-ax)*k/n,az+(bz-az)*k/n]);}
+  const ty=([x,z])=>inApron(x,z)?'conc':beach(x,z)?'sand':'dirt';let cur=[q[0]],ct=ty(q[0]);
+  for(let i=1;i<q.length;i++){const m=[(q[i-1][0]+q[i][0])/2,(q[i-1][1]+q[i][1])/2],tt=ty(m);if(tt!==ct&&cur.length>1){out.push([cur,w,ct]);cur=[q[i-1]];}ct=tt;cur.push(q[i]);}
+  out.push([cur,w,ct]);}
+ RNET.push(...out);}
+const SOFT=t=>t==='dirt'||t==='sand',RIB=t=>t==='dirt'||t==='sand'||t==='conc';
 // ---- I-17 elevated freeway: continuous loop around the whole map on concrete pillars, 3 lanes each way, median + side barriers.
 // +side (o>0) carriageway travels with increasing index; ramps sit outside the deck edge: foot on the ground at i0, climb over L pts, merge zone M pts. ----
 const FH=7.6,FDW=13.5,FRW=6,FGRID=40;
@@ -551,7 +569,7 @@ function fwEdge(x,z){const q=fwNear(x,z);return q?Math.abs(q.o)-(FDW+FRW+1.5):1e
 const fwAt=(i,o)=>{const a=FW[(i%FWN+FWN)%FWN];return[a.x+a.n.x*o,a.z+a.n.z*o];};
 const rnetEdge=(x,z)=>{let m=1e9;for(const [pl,w] of RNET)for(let i=0;i<pl.length-1;i++){const e=segDist(x,z,[pl[i][0],pl[i][1],pl[i+1][0],pl[i+1][1]])-w;if(e<m)m=e;}return m;};
 const RAMPS=[],XCH=[];{const L=28,M=16;// diamond interchanges: on+off ramp for each direction, a cross street under the deck, a road to a destination
- const near=(px,pz)=>{let best=null,bd=1e9;for(const [pl,w,t] of RNET){if(t==='dirt')continue;for(let i=0;i<pl.length-1;i++){const x0=pl[i][0],z0=pl[i][1],dx=pl[i+1][0]-x0,dz=pl[i+1][1]-z0,l2=dx*dx+dz*dz||1;let u=((px-x0)*dx+(pz-z0)*dz)/l2;u=Math.max(0,Math.min(1,u));const qx=x0+dx*u,qz=z0+dz*u,d=Math.hypot(qx-px,qz-pz);if(d<bd){bd=d;best=[qx,qz];}}}return[best,bd];};
+ const near=(px,pz)=>{let best=null,bd=1e9;for(const [pl,w,t] of RNET){if(RIB(t))continue;for(let i=0;i<pl.length-1;i++){const x0=pl[i][0],z0=pl[i][1],dx=pl[i+1][0]-x0,dz=pl[i+1][1]-z0,l2=dx*dx+dz*dz||1;let u=((px-x0)*dx+(pz-z0)*dz)/l2;u=Math.max(0,Math.min(1,u));const qx=x0+dx*u,qz=z0+dz*u,d=Math.hypot(qx-px,qz-pz);if(d<bd){bd=d;best=[qx,qz];}}}return[best,bd];};
  const inB=(x,z,m)=>Math.abs(x)<BOUND-m&&Math.abs(z)<BOUND-m;
  const clear=i0=>{for(let k=-(L+M+3);k<=L+M+3;k+=3)for(const s of[1,-1])for(const o of[FDW+1,FDW+FRW+2]){const [x,z]=fwAt(i0+k,s*o);if(rnetEdge(x,z)<4||!inB(x,z,60))return false;}return true;};
  for(const f of[.04,.2,.36,.52,.68,.84]){for(let t=0;t<30;t++){const i0=Math.floor(f*FWN)+(t%2?-1:1)*Math.ceil(t/2)*4;if(clear(i0)){XCH.push({i0});for(const s of[1,-1])for(const d of[1,-1])RAMPS.push({s,d,i0,L,M,on:s*d>0,x:XCH.length-1});break;}}}
@@ -581,7 +599,7 @@ const ROADS=RNET.map(r=>r[0]);
 const CANYON=[[-480,420],[-560,250],[-580,50],[-560,-150],[-600,-320]];
 function segDist(x,z,s){const dx=s[2]-s[0],dz=s[3]-s[1],l=dx*dx+dz*dz;let t=((x-s[0])*dx+(z-s[1])*dz)/l;t=Math.max(0,Math.min(1,t));const ex=s[0]+dx*t-x,ez=s[1]+dz*t-z;return Math.sqrt(ex*ex+ez*ez);}
 // distance to nearest road EDGE (negative = on the road); type of road you're on (paved wins over dirt)
-function roadInfo(x,z){let d=1e9,dp=1e9;for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<d)d=e;if(s[5]!=='dirt'&&e<dp)dp=e;}return{d,type:dp<=.6?'paved':d<=.6?'dirt':'off'};}
+function roadInfo(x,z){let d=1e9,dp=1e9;for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<d)d=e;if(!SOFT(s[5])&&e<dp)dp=e;}return{d,type:dp<=.6?'paved':d<=.6?'dirt':'off'};}
 function roadEdge(x,z){let m=fwEdge(x,z);for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<m)m=e;}return m;}
 function roadEdgeOld(x,z){let m=1e9;for(let i=0;i<OLDSEGN;i++){const s=SEGS[i],e=segDist(x,z,s)-s[4];if(e<m)m=e;}return m;}// original-map layout stays bit-identical
 function roadDist(x,z){return roadEdge(x,z)+RW;} // legacy: centre-line-equivalent of a 7m half-width road
@@ -916,10 +934,10 @@ function buildNature(COL,KEEP){let rs=4242;const rnd=()=>(rs=(rs*16807)%21474836
  const strip=(x0,z0,x1,z1,w,y,c)=>{const dx=x1-x0,dz=z1-z0,l=Math.hypot(dx,dz);o.position.set((x0+x1)/2,y,(z0+z1)/2);o.rotation.set(-Math.PI/2,0,0);o.rotateZ(Math.atan2(dx,dz));o.updateMatrix();parts.push({g:new THREE.PlaneGeometry(w,l),m:o.matrix.clone(),c});};
  const insideOther=(x,z,self,pad=0)=>{for(const s of SEGS)if(s!==self&&segDist(x,z,s)<s[4]+pad)return true;return false;};
  for(let i=0;i<CANYON.length-1;i++){const [a,b]=[CANYON[i],CANYON[i+1]];const dx=b[0]-a[0],dz=b[1]-a[1],l=Math.hypot(dx,dz);strip(a[0]-dx/l*45,a[1]-dz/l*45,b[0]+dx/l*45,b[1]+dz/l*45,90,0.04,0xb98a55);}
- const SURF={hw:[0x37373b,.1],st:[0x404045,.095],al:[0x4a4a4c,.09],dirt:[0x8a6a45,.085]};
+ const SURF={hw:[0x37373b,.1],st:[0x404045,.095],al:[0x4a4a4c,.09],dirt:[0x8a6a45,.085],sand:[0xcdb98a,.085],conc:[0xa3a39d,.086]};
  const mainParts=parts,CH={},CHS=600;
  for(const s of SEGS){const [x0,z0,x1,z1,w,t]=s,dx=x1-x0,dz=z1-z0,l=Math.hypot(dx,dz),ux=dx/l,uz=dz/l;
-  if(t==='hwy')continue;
+  if(t==='hwy'||RIB(t))continue;
   if(SEGS.indexOf(s)>=OLDSEGN){const k=Math.floor((x0+x1)/2/CHS)+','+Math.floor((z0+z1)/2/CHS);parts=CH[k]||(CH[k]=[]);}else parts=mainParts;
   strip(x0-ux*w,z0-uz*w,x1+ux*w,z1+uz*w,w*2,SURF[t][1],SURF[t][0]);
   if(t==='dirt'){for(const sd of[-1,1])strip(x0+(-uz)*sd*1.6,z0+ux*sd*1.6,x1+(-uz)*sd*1.6,z1+ux*sd*1.6,.9,.088,0x6e5234);continue;} // wheel ruts
@@ -929,10 +947,22 @@ function buildNature(COL,KEEP){let rs=4242;const rnd=()=>(rs=(rs*16807)%21474836
    if(insideOther(mx,mz,s,.5))continue; // no markings across junctions
    if((d/4)%3<1.5&&b-a>2)strip(x0+ux*a,z0+uz*a,x0+ux*(a+2.6),z0+uz*(a+2.6),.3,.12,CW); // centre dashes
    for(const sd of[-1,1]){const ox=nx*sd*(w-.7),oz=nz*sd*(w-.7);strip(x0+ux*a+ox,z0+uz*a+oz,x0+ux*b+ox,z0+uz*b+oz,.22,.12,0xf4f4f4);}}}
+ // dirt / sand / concrete back roads: one continuous mitred ribbon per polyline (+ wheel ruts), so curves have no kinks or overlaps
+ {const ribbon=(pl,off,hw,y,c)=>{const P=[],Nn=[],L=[];for(let i=0;i<pl.length;i++){const a=pl[Math.max(0,i-1)],b=pl[Math.min(pl.length-1,i+1)];let tx=b[0]-a[0],tz=b[1]-a[1];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
+    let mx=-tz,mz=tx,sc=1;if(i>0&&i<pl.length-1){const p=pl[i-1],q=pl[i];const dx=q[0]-p[0],dz=q[1]-p[1],dl=Math.hypot(dx,dz)||1;sc=1/Math.max(.5,(-dz/dl)*mx+(dx/dl)*mz);}
+    const cx=pl[i][0]+mx*off*sc,cz=pl[i][1]+mz*off*sc;L.push([cx-mx*hw*sc,cz-mz*hw*sc,cx+mx*hw*sc,cz+mz*hw*sc]);}
+   for(let i=0;i<L.length-1;i++){const A=L[i],B=L[i+1];P.push(A[0],y,A[1],B[2],y,B[3],B[0],y,B[1],A[0],y,A[1],A[2],y,A[3],B[2],y,B[3]);for(let k=0;k<6;k++)Nn.push(0,1,0);}
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));parts.push({g,m:new THREE.Matrix4(),c});};
+  for(const [pl,w,t] of RNET){if(!RIB(t))continue;const mid=pl[pl.length>>1],k=Math.floor(mid[0]/CHS)+','+Math.floor(mid[1]/CHS);parts=CH[k]||(CH[k]=[]);
+   // extend the ends slightly so the ribbon tucks under the road it joins
+   const e=(a,b)=>{const dx=a[0]-b[0],dz=a[1]-b[1],l=Math.hypot(dx,dz)||1;return[a[0]+dx/l*w*.6,a[1]+dz/l*w*.6];};const q=[e(pl[0],pl[1]),...pl.slice(1,-1),e(pl[pl.length-1],pl[pl.length-2])];
+   ribbon(q,0,w,SURF[t][1],SURF[t][0]);if(t==='dirt'||t==='sand')for(const sd of[-1,1])ribbon(q,sd*1.6,.45,SURF[t][1]+.004,t==='sand'?0xb09a6c:0x6e5234);
+   if(t==='conc')for(let i=2;i<q.length-1;i+=2){const [ax,az]=q[i],[bx,bz]=q[i+1],dx=bx-ax,dz=bz-az,l=Math.hypot(dx,dz)||1;strip(ax-dz/l*w,az+dx/l*w,ax+dz/l*w,az-dx/l*w,.12,.09,0x7d7d78);}}
+  parts=mainParts;}
  // crosswalks at town junctions
  const inTown=(x,z)=>Math.abs(x)<=160&&Math.abs(z)<=160;
- for(const s of SEGS){if(s[5]==='dirt'||s[5]==='al'||s[5]==='hwy')continue;const [x0,z0,x1,z1,w]=s,l=Math.hypot(x1-x0,z1-z0),ux=(x1-x0)/l,uz=(z1-z0)/l,nx=-uz,nz=ux;
-  for(const o2 of SEGS){if(o2===s||o2[5]==='dirt'||o2[5]==='al'||o2[5]==='hwy')continue;
+ for(const s of SEGS){if(RIB(s[5])||s[5]==='al'||s[5]==='hwy')continue;const [x0,z0,x1,z1,w]=s,l=Math.hypot(x1-x0,z1-z0),ux=(x1-x0)/l,uz=(z1-z0)/l,nx=-uz,nz=ux;
+  for(const o2 of SEGS){if(o2===s||RIB(o2[5])||o2[5]==='al'||o2[5]==='hwy')continue;
    // intersection of centre lines
    const ex=o2[2]-o2[0],ez=o2[3]-o2[1],den=(x1-x0)*ez-(z1-z0)*ex;if(Math.abs(den)<1e-6)continue;
    const t=((o2[0]-x0)*ez-(o2[1]-z0)*ex)/den,u=((o2[0]-x0)*(z1-z0)-(o2[1]-z0)*(x1-x0))/den;if(t<-.02||t>1.02||u<-.02||u>1.02)continue;
@@ -1094,8 +1124,8 @@ const mbg=document.createElement('canvas');mbg.width=mbg.height=MS*2;{const c=mb
  c.fillStyle='#2a6f9e';c.fillRect(0,0,mx(WATERX),MS);c.fillStyle='#efe6d0';c.beginPath();c.ellipse(mx(LAKE.x),mz(LAKE.z),LAKE.rx*mscale,LAKE.rz*mscale,0,0,7);c.fill();
  c.strokeStyle='#c49a63';c.lineWidth=90*mscale;c.lineCap=c.lineJoin='round';c.beginPath();CANYON.forEach((p,i)=>i?c.lineTo(mx(p[0]),mz(p[1])):c.moveTo(mx(p[0]),mz(p[1])));c.stroke();
  c.fillStyle='#9a9a9a';for(const b of openWorld.userData.bld)c.fillRect(mx(b[0]-b[2]/2),mz(b[1]-b[3]/2),Math.max(1,b[2]*mscale),Math.max(1,b[3]*mscale));
- const STY={dirt:['#8a5a2a',.9],al:['#bbb',.4],st:['#d6d6d6',.8],hw:['#f2f2f2',1.4]};
- for(const t of['dirt','al','st','hw']){c.strokeStyle=STY[t][0];c.lineWidth=STY[t][1];if(t==='dirt')c.setLineDash([1.5,1]);else c.setLineDash([]);
+ const STY={sand:['#d9c48f',.9],conc:['#b0b0aa',.9],dirt:['#8a5a2a',.9],al:['#bbb',.4],st:['#d6d6d6',.8],hw:['#f2f2f2',1.4]};
+ for(const t of['dirt','sand','conc','al','st','hw']){c.strokeStyle=STY[t][0];c.lineWidth=STY[t][1];if(t==='dirt'||t==='sand')c.setLineDash([1.5,1]);else c.setLineDash([]);
   for(const sg of SEGS)if(sg[5]===t){c.beginPath();c.moveTo(mx(sg[0]),mz(sg[1]));c.lineTo(mx(sg[2]),mz(sg[3]));c.stroke();}}
  c.setLineDash([]);for(const [w,cl] of[[2.6,'#cfd8e6'],[.5,'#5d7a99']]){c.strokeStyle=cl;c.lineWidth=w;c.beginPath();FW.forEach((p,i)=>{const x=mx(p.x),z=mz(p.z);i?c.lineTo(x,z):c.moveTo(x,z);});c.closePath();c.stroke();}
  c.strokeStyle='#cfd8e6';c.lineWidth=1.2;for(const r of RAMPS){c.beginPath();for(let k=0;k<=r.L+r.M;k+=4){const [x,z]=fwAt(rIdx(r,k),r.s*(FDW+FRW/2));k?c.lineTo(mx(x),mz(z)):c.moveTo(mx(x),mz(z));}c.stroke();}

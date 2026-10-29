@@ -168,3 +168,9 @@
 - Fix: upgrades now scale each car's stock stats by a percentage. Engine +7% top / +5% accel, Transmission +3% / +7%, Tires +5% grip / +2% accel, Weight +1% / +4% / +1.5% grip, all per level. Maxing everything gives +33% top, +54% accel and +19.5% grip. Stats apply immediately after purchase (player car, races, drag).
 - The garage stat bars are rescaled and show mph and accel numbers. Upgrade rows show their effect per level.
 - Headless test (pinned straight, full throttle): Bandit 116→155 mph, Coyote 112→149, Ridgeback 110→146, Thunder 125→167, Stinger 128→170, Brute 134→179, Kestrel 114→152, Haymaker 110→146, Longshot 136→181, Hammerhead 141→188.
+
+## am-v24 — 2026-10-28 — Rounded dirt roads, concrete harbor, sand beach
+- Every dirt back road is now filleted with circular arcs at each bend (target radius ~75 m, min measured ~74 m); the near-90° corners are now smooth sweepers.
+- Dirt/sand/concrete roads render as single continuous mitred ribbons (with wheel ruts) instead of overlapping straight planes, so there are no kinks or z-fighting overlaps.
+- Coast road split: concrete through the port apron, sand along the beach; minimap, surface physics (sand = loose like dirt) and lane markings updated.
+- Dust Devil Rally track is a smooth closed spline; checkpoints and AI derive from its points so they remain in sync.
