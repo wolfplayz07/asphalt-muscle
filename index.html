@@ -85,7 +85,7 @@ const RACE_CARS=['bandit','thunder','ridge'].map(CAR);
 // upgrade effects are fractions of the car's stock stat per level, so every car gains noticeably (max all = +33% top, +54% accel, +19.5% grip)
 const UPG=[{k:'eng',name:'Engine',cost:[2000,5000,10000],top:.07,acc:.05,grip:0},
  {k:'trn',name:'Transmission',cost:[1500,3500,7500],top:.03,acc:.07,grip:0},
- {k:'tir',name:'Tires',cost:[1000,2500,5000],top:0,acc:.02,grip:.05},
+ {k:'tir',name:'Tires',cost:[1000,2500,5000],top:0,acc:.02,grip:.05,off:.25},
  {k:'wgt',name:'Weight reduction',cost:[1200,3000,6500],top:.01,acc:.04,grip:.015}];
 const PAINTS=[0x111111,0xc8102e,0x1f6fd1,0xff7a1a,0x7fc8a9,0x5b2a86,0xe8e8e8,0xf2c200,0x2e7d32,0x8b5a2b];
 const FINISHES=[{k:'gloss',name:'Gloss paint',cost:0},{k:'matte',name:'Matte',cost:1500},{k:'metal',name:'Metallic flake',cost:3000},{k:'glass',name:'Fiberglass',cost:5000},{k:'cacc',name:'Carbon accents',cost:6000},{k:'carbon',name:'Carbon fiber',cost:12000}];
@@ -98,8 +98,11 @@ function loadSave(){let s=null;try{s=JSON.parse(localStorage.getItem(SAVE_KEY)||
  if(!Object.keys(out.owned).length)out.owned.bandit=newEntry();
  out.active=out.owned[s.active]?s.active:Object.keys(out.owned)[0];return out;}
 let save=loadSave();const persist=()=>localStorage.setItem(SAVE_KEY,JSON.stringify(save));persist();
+// surface multipliers on the car's (upgraded) stats; each tire level removes 25% of the loose-surface penalty (max tires recover 75%)
+const SURFP={paved:{top:1,acc:1,grip:1},dirt:{top:.82,acc:.85,grip:.88},off:{top:.5,acc:.62,grip:.8},canyon:{top:.43,acc:.58,grip:.8}};
+function surfMul(d,type){const p=SURFP[type]||SURFP.paved,k=1-.25*Math.min(3,d.tir|0);return{top:1-(1-p.top)*k,acc:1-(1-p.acc)*k,grip:1-(1-p.grip)*k};}
 function effDef(id){const b=CAR(id),e=save.owned[id]||newEntry();const d={...b};
- let ft=1,fa=1,fg=1;for(const u of UPG){const l=e[u.k]|0;ft+=u.top*l;fa+=u.acc*l;fg+=u.grip*l;}d.top=b.top*ft;d.acc=b.acc*fa;d.grip=b.grip*fg;d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
+ let ft=1,fa=1,fg=1;for(const u of UPG){const l=e[u.k]|0;ft+=u.top*l;fa+=u.acc*l;fg+=u.grip*l;}d.top=b.top*ft;d.acc=b.acc*fa;d.grip=b.grip*fg;d.tir=e.tir|0;d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
 const money=n=>'$'+Math.round(n).toLocaleString('en-US');
 const sellValue=id=>Math.round(.6*(CAR(id).price+save.owned[id].spent));
 // ================= RENDERER =================
@@ -422,11 +425,11 @@ function finish(now){state='done';
   $('fintab').innerHTML=rows.map((r,i)=>{let t;if(r.done){pv=r.done;t=fmt(r.done);}else{const left=TRACKS[trackSel].rally?(r.cp>=gates.length?0:N-((r.seg>N*.9&&r.cp<2)?r.seg-N:r.seg)):SPR?N-SPF-r.seg:(LAPS-r.lap)*N-((r.seg)%N);pv=Math.max(pv+0.5,(now-raceStart)/1000+left*(pts[0].distanceTo(pts[1]))/Math.max(10,r.def.top*r.skill*.8));t='~'+fmt(pv);}
    return `<tr style="${r.ai?'':'color:#ff5'}"><td>${ord(i+1)}</td><td>${r.name}</td><td>${r.def.name}</td><td>${t}</td><td style="color:#7f7">+${money(PAY[i])}</td></tr>`}).join('');
   $('fint').textContent='FINISH — '+ord(place);$('payout').textContent=`You earned ${money(lastPayout)} · Cash ${money(save.cash)}`+(SPR?` · Traffic hits: ${player.hits||0}`:'')+(TRACKS[trackSel].rally?` · Splits: ${(player.splits||[]).map(fmt).join(' ')}`:'');$('fin').style.display='flex';},900);}
-function physics(r,dt,inp,off,maxV){const d=r.def;
- if(inp.g)r.v+=(off?14:d.acc)*dt;else if(inp.b)r.v-=(r.v>0?40:10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
+function physics(r,dt,inp,off,maxV,sm){const d=r.def;
+ if(inp.g)r.v+=(sm?d.acc*sm.acc:off?14:d.acc)*dt;else if(inp.b)r.v-=(r.v>0?40:10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
  if(r.v>maxV)r.v-=Math.min(r.v-maxV,40*dt);r.v=Math.max(-10,r.v);
  r.steer+=(inp.s-r.steer)*Math.min(1,dt*8);
- const turn=r.steer*Math.min(1,Math.abs(r.v)/8)*(d.grip-Math.abs(r.v)/80)*Math.sign(r.v||1);r.h+=turn*dt;
+ const turn=r.steer*Math.min(1,Math.abs(r.v)/8)*((sm?d.grip*sm.grip:d.grip)-Math.abs(r.v)/80)*Math.sign(r.v||1);r.h+=turn*dt;
  r.x+=Math.sin(r.h)*r.v*dt;r.z+=Math.cos(r.h)*r.v*dt;}
 function step(r,dt,now,inp){const sx=r.x,sz=r.z;
  const n=nearest(r.x,r.z,r.seg-30,61);const off=n.d>W+0.6,T=TRACKS[trackSel];
@@ -608,7 +611,8 @@ const ROADS=RNET.map(r=>r[0]);
 const CANYON=[[-480,420],[-560,250],[-580,50],[-560,-150],[-600,-320]];
 function segDist(x,z,s){const dx=s[2]-s[0],dz=s[3]-s[1],l=dx*dx+dz*dz;let t=((x-s[0])*dx+(z-s[1])*dz)/l;t=Math.max(0,Math.min(1,t));const ex=s[0]+dx*t-x,ez=s[1]+dz*t-z;return Math.sqrt(ex*ex+ez*ez);}
 // distance to nearest road EDGE (negative = on the road); type of road you're on (paved wins over dirt)
-function roadInfo(x,z){let d=1e9,dp=1e9;for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<d)d=e;if(!SOFT(s[5])&&e<dp)dp=e;}return{d,type:dp<=.6?'paved':d<=.6?'dirt':'off'};}
+function roadInfo(x,z){let d=1e9,dp=1e9;for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<d)d=e;if(!SOFT(s[5])&&e<dp)dp=e;}for(const E of ENDS){const cx=E.x+Math.sin(E.h)*E.w*1.4,cz=E.z+Math.cos(E.h)*E.w*1.4;if(Math.hypot(x-cx,z-cz)<=E.w*2.8+.3){if(SOFT(E.t)){if(d>.6)d=0;}else{dp=0;d=0;}}}
+ return{d,type:dp<=.6?'paved':d<=.6?'dirt':'off'};}
 function roadEdge(x,z){let m=fwEdge(x,z);for(const s of SEGS){const e=segDist(x,z,s)-s[4];if(e<m)m=e;}return m;}
 function roadEdgeOld(x,z){let m=1e9;for(let i=0;i<OLDSEGN;i++){const s=SEGS[i],e=segDist(x,z,s)-s[4];if(e<m)m=e;}return m;}// original-map layout stays bit-identical
 function roadDist(x,z){return roadEdge(x,z)+RW;} // legacy: centre-line-equivalent of a 7m half-width road
@@ -1170,7 +1174,8 @@ function hidePrompt(){$('prompt').style.display='none';$('ring').style.display='
 function worldTick(dt,now){
  const inp=playerInput();
  const fy=free.y||0,ri=fy>1?{type:'paved'}:roadInfo(free.x,free.z),off=ri.type==='off',dirt=ri.type==='dirt';free.surface=ri.type;const fx0=free.x,fz0=free.z;
- physics(free,dt,inp,off,off?(canyonDist(free.x,free.z)<45?24:28):dirt?free.def.top*.82:free.def.top);
+ const sm=surfMul(free.def,off?(canyonDist(free.x,free.z)<45?'canyon':'off'):dirt?'dirt':'paved');free.sm=sm;
+ physics(free,dt,inp,off,free.def.top*sm.top,sm);
  fwMove(free,fx0,fz0,dt);
  // buildings + rocks collision approximated: buildings boxes (not when up on the freeway)
  if((free.y||0)<2)for(const b of openWorld.userData.bld){const hx=b[2]/2+1.2,hz=b[3]/2+1.2,dx=free.x-b[0],dz=free.z-b[1];if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz);if(px<pz)free.x+=Math.sign(dx)*px;else free.z+=Math.sign(dz)*pz;free.v*=.5;}}
@@ -1199,7 +1204,7 @@ function openGarage(){if(state!=='free')return;hidePrompt();$('gbtn').style.disp
 function showCar(id){gView=id;if(gCar)disposeCar(gCar);const d=save.owned[id]?effDef(id):CAR(id);gCar=makeCar(d,save.owned[id]?d.paint:d.color,gScene);gCar.position.y=0;}
 const MAXS=(()=>{const m={top:0,acc:0,grip:0};for(const c of CARS)for(const k in m)m[k]=Math.max(m[k],c[k]);return{top:m.top*1.34,acc:m.acc*1.55,grip:m.grip*1.2};})();
 function bars(id){const b=CAR(id),e=save.owned[id]?effDef(id):b;
- return [['Top speed','top'],['Acceleration','acc'],['Grip','grip']].map(([n,k])=>`<div style="font-size:12px">${n} <span style="opacity:.75">${k==='top'?Math.round(e[k]*2.237)+' mph':k==='acc'?(e[k]*2.237).toFixed(0)+' mph/s':e[k].toFixed(2)}</span></div><div class="bar"><i style="width:${e[k]/MAXS[k]*100}%;background:#f5a623"></i><i style="width:${b[k]/MAXS[k]*100}%;background:#d22"></i></div>`).join('');}
+ return [['Top speed','top'],['Acceleration','acc'],['Grip','grip']].map(([n,k])=>`<div style="font-size:12px">${n} <span style="opacity:.75">${k==='top'?Math.round(e[k]*2.237)+' mph':k==='acc'?(e[k]*2.237).toFixed(0)+' mph/s':e[k].toFixed(2)}</span></div><div class="bar"><i style="width:${e[k]/MAXS[k]*100}%;background:#f5a623"></i><i style="width:${b[k]/MAXS[k]*100}%;background:#d22"></i></div>`).join('')+(()=>{const so=surfMul(e,'dirt'),sb=surfMul(b,'dirt'),v=e.top*so.top,mx=MAXS.top;return`<div style="font-size:12px">Off-road <span style="opacity:.75">${Math.round(v*2.237)} mph on dirt · ${Math.round(so.top*100)}% of road pace</span></div><div class="bar"><i style="width:${v/mx*100}%;background:#f5a623"></i><i style="width:${b.top*sb.top/mx*100}%;background:#d22"></i></div>`})();}
 function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save.owned[gView]||'')){showCar(gView);gCar.uid=gView+JSON.stringify(save.owned[gView]||'');}
  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===gTab));
  $('gname').innerHTML=`${CAR(gView).name}${gView===save.active?' <span style="font-size:13px;color:#7f7">ACTIVE</span>':''}<div style="font:600 11px sans-serif;opacity:.8">red = base · orange = upgraded</div>${bars(gView)}`;
@@ -1211,7 +1216,7 @@ function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save
  else if(gTab==='deal'){for(const c of CARS){const own=!!save.owned[c.id];h+=`<div class="it${c.id===gView?' sel':''}" data-act="view" data-id="${c.id}"><div><b>${c.name}</b><br><span style="opacity:.7">${money(c.price)}${c.id==='bandit'?' · starter':''}</span></div>
   <button class="btn sm" data-act="buy" data-id="${c.id}" ${own||save.cash<c.price?'disabled':''}>${own?'Owned':'Buy'}</button></div>`;}}
  else if(gTab==='upg'){const id=save.active,e=save.owned[id];h+=`<div style="margin:2px 0 4px">Upgrading: <b>${CAR(id).name}</b></div>`;
-  for(const u of UPG){const l=e[u.k],cost=u.cost[l];h+=`<div class="it"><div><b>${u.name}</b> <span style="color:#f5a623">${'■'.repeat(l)}${'□'.repeat(3-l)}</span><br><span style="opacity:.7">${l>=3?'MAX':'Level '+(l+1)+' · '+money(cost)}</span><br><span style="opacity:.6;font-size:11px">${[u.top&&'+'+Math.round(u.top*100)+'% top',u.acc&&'+'+Math.round(u.acc*100)+'% accel',u.grip&&'+'+(u.grip*100).toFixed(1).replace('.0','')+'% grip'].filter(Boolean).join(', ')} per level</span></div>
+  for(const u of UPG){const l=e[u.k],cost=u.cost[l];h+=`<div class="it"><div><b>${u.name}</b> <span style="color:#f5a623">${'■'.repeat(l)}${'□'.repeat(3-l)}</span><br><span style="opacity:.7">${l>=3?'MAX':'Level '+(l+1)+' · '+money(cost)}</span><br><span style="opacity:.6;font-size:11px">${[u.top&&'+'+Math.round(u.top*100)+'% top',u.acc&&'+'+Math.round(u.acc*100)+'% accel',u.grip&&'+'+(u.grip*100).toFixed(1).replace('.0','')+'% grip',u.off&&'-'+Math.round(u.off*100)+'% off-road penalty'].filter(Boolean).join(', ')} per level</span></div>
    <button class="btn sm" data-act="upg" data-k="${u.k}" ${l>=3||save.cash<cost?'disabled':''}>${l>=3?'Max':'Buy'}</button></div>`;}}
  else{const id=save.active,cur=effDef(id).paint;h+=`<div style="margin:2px 0 4px">Paint <b>${CAR(id).name}</b> · ${money(PAINT_COST)} per coat</div><div>`;
   for(const p of PAINTS)h+=`<span class="sw${p===cur?' on':''}" data-act="paint" data-c="${p}" style="background:#${p.toString(16).padStart(6,'0')}"></span>`;h+='</div>';
@@ -1274,6 +1279,6 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev
  for(const c of scene.children)if(!c.userData.rs){c.userData.rs=1;c.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o!==SKY&&!o.material.transparent)o.receiveShadow=true;});}
  renderer.render(scene,camera);}
 requestAnimationFrame(frame);
-window.__game={RNET,SEGS,fwEdge,ENDS,JOINS,respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
+window.__game={surfMul,effDef,RNET,SEGS,fwEdge,ENDS,JOINS,respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
  get traffic(){return traffic},TRACKS,get pts(){return pts},N,get drag(){return drag},get gates(){return gates},get raceStart(){return raceStart},DRAG,forceFinish(place=1){if(state!=='race')return;if(TRACKS[trackSel].drag){if(player.rt==null)player.rt=.3;dragFinish(performance.now());return;}const now=performance.now(),t=(now-raceStart)/1000;racers.filter(r=>r.ai).slice(0,place-1).forEach((r,i)=>{r.lap=LAPS;r.done=t-1-i;});player.lap=LAPS;player.done=t;finish(now);}};
 </script></body></html>

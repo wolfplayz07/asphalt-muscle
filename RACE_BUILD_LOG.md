@@ -187,3 +187,10 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - Forest dirt road (-1100,1520) → turnaround + trailhead (sign, kiosk, gravel lot).
 - Desert dirt road (1178,-1080) → turnaround + gas station.
 - Minimap shows the turnarounds; re-audit: 0 unintended dead ends.
+
+## am-v26 — 2026-10-29 — Upgrades carry onto dirt, sand and off-road
+- Before: dirt capped at a flat 82% of top speed, and off-road at a fixed 63 mph (54 in the canyon) with fixed 14 m/s² accel for every car, so upgrades did nothing off the pavement.
+- Now every surface scales the car's upgraded top speed, accel and grip (dirt/sand 82/85/88%, grass 50/62/80%, canyon 43/58/80% at stock), and each Tires level removes 25% of that penalty (max tires recover 75%).
+- Turnaround circles count as their own surface (paved bulbs = paved, dirt/sand bulbs = dirt).
+- Garage: new Off-road stat (dirt mph + % of road pace); the Tires row lists "-25% off-road penalty".
+- Headless (mph, stock → all max): Bandit asphalt 116→155, dirt 95→148, grass 58→135; Coyote 112→149, 92→142, 56→130; Hammerhead 141→188, 116→179, 70→164.
