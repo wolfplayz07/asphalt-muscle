@@ -194,3 +194,14 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - Turnaround circles count as their own surface (paved bulbs = paved, dirt/sand bulbs = dirt).
 - Garage: new Off-road stat (dirt mph + % of road pace); the Tires row lists "-25% off-road penalty".
 - Headless (mph, stock → all max): Bandit asphalt 116→155, dirt 95→148, grass 58→135; Coyote 112→149, 92→142, 56→130; Hammerhead 141→188, 116→179, 70→164.
+
+## 2026-10-29 — am-v27 ★ MAJOR MILESTONE: parts, build presets, tuning, sport compacts
+- Generic upgrade levels replaced by a full parts shop: intake, exhaust, cams, block, engine swaps (V8 / turbo I6 / rotary / boxer), forced induction (turbo, twin-turbo, supercharger), transmission, differential (open/LSD/locked), drive swap (FWD/RWD/AWD), tires (street, sport, slick, gravel rally, drag radial, drift), suspension (sport, race, raised rally, drag, drift), brakes, weight, front splitter, rear spoiler/wing, rally light pod. Street/Sport/Race/Rally/Drift/Drag tiers.
+- Performance index (PI 100–999) + class D/C/B/A/S1/S2/X, updated live; stat bars Speed/Handling/Acceleration (0-60)/Launch/Braking/Offroad/Drift with green/red preview before buying.
+- One-tap build presets: Street, Rally, Drag, Drift, Track (price = only parts you don't own yet).
+- Tune tab: tire pressure, final drive, camber, springs, anti-roll bars, diff lock, downforce. Saveable named builds (up to 6 per car).
+- Physics: launch multiplier, brake strength, rear-grip slide model in free roam (drift builds hold long slides), drift score HUD + best drift; gravel tires/rally springs/AWD remove up to 95% of the dirt penalty.
+- Visuals: ride height, wide tires, splitter, spoiler, race wing, mudflaps, roof light pod, wheelie bar.
+- New cars: Gale 4R (AWD turbo sedan, $26k), Tempest T6 (long-nose turbo coupe, $38k), Ronin 33 (GT coupe, $34k). ~2.6–2.9k tris.
+- Race prompts show a class limit (Ridge B, Canyon A, Highway S1, Drag open, Rally A).
+- Old saves migrate: engine/trans/tire/weight levels become the matching owned parts.

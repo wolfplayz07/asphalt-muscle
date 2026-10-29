@@ -30,7 +30,11 @@ canvas#gl{display:block;position:fixed;inset:0}
 #gbtn{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);display:none;z-index:4;background:#1a9e4a;font-size:22px}
 #hint{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 100px);width:100%;text-align:center;font:600 14px sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
 body.free #hud,body.free #pos,body.garage #hud,body.garage #pos{display:none}body.nolap #laptimes{display:none}#rinfo{display:none}body.rally #rinfo{display:inline}body:not(.free) #mini,body:not(.free) #hint,body:not(.free) #cash{display:none}
-body.garage .b,body.garage #spd{display:none}
+body.garage .b,body.garage #spd,body.garage #drift,body.racing #drift{display:none}
+#drift{display:none;position:fixed;top:calc(env(safe-area-inset-top) + 44px);right:calc(env(safe-area-inset-right) + 12px);font:800 18px ui-monospace,Menlo,monospace;color:#d9a3ff;text-shadow:0 1px 3px #000;pointer-events:none}
+.pg{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:4px;margin:2px 0 6px}.pt{background:#222a36;border-radius:8px;padding:5px;font-size:11px;line-height:1.25;border:2px solid transparent}.pt.on{border-color:#7f7}.pt.pv{border-color:#ff5}.pt b{font-size:12px}.tier{display:inline-block;padding:0 4px;border-radius:4px;font-size:10px;font-weight:800;color:#000}
+.pi{display:inline-block;border-radius:6px;overflow:hidden;font:800 13px sans-serif;vertical-align:middle}.pi i{font-style:normal;padding:1px 6px;display:inline-block}.pi i+i{background:#fff;color:#000}
+.cat{font:800 12px sans-serif;margin:6px 0 2px;opacity:.85;text-transform:uppercase;letter-spacing:.5px}input[type=range]{width:100%;accent-color:#f5a623}
 body.tilt #L,body.tilt #R{display:none}
 #steerT{position:fixed;top:calc(env(safe-area-inset-top) + 40px);left:50%;transform:translateX(-50%);z-index:4;font:700 13px sans-serif;padding:5px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.5);background:rgba(0,0,0,.45);color:#fff;display:none}
 body.free #steerT,body.racing #steerT{display:block}
@@ -49,7 +53,7 @@ body.free #steerT,body.racing #steerT{display:block}
 </head><body>
 <canvas id="gl"></canvas>
 <div id="hud"><span id="lapl">LAP <span id="ln">1</span>/3</span><span id="laptimes"><br>CUR <span id="cur">0:00.000</span><br>LAST <span id="last">--</span><br>BEST <span id="best">--</span></span><span id="rinfo"></span></div>
-<div id="spd">0 mph</div><div id="pos">1st</div><div id="cash">$0</div><div id="msg"></div>
+<div id="spd">0 mph</div><div id="drift"></div><div id="pos">1st</div><div id="cash">$0</div><div id="msg"></div>
 <div class="b" id="L">◀</div><div class="b" id="R">▶</div><div class="b" id="B">BRAKE</div><div class="b" id="G">GAS</div>
 <div id="menu"><h1>ASPHALT MUSCLE</h1><div id="mcar" style="font-size:18px;margin:4px"></div><div id="mcash" style="font:800 20px ui-monospace,Menlo,monospace;color:#7f7;margin-bottom:8px"></div>
 <div id="steerSet">Steering: <button class="btn sm opt" id="optTilt" data-mode="tilt">Tilt</button><button class="btn sm opt" id="optBtn" data-mode="buttons">Buttons</button></div>
@@ -60,7 +64,7 @@ body.free #steerT,body.racing #steerT{display:block}
 <div id="prompt"><div id="ptxt"></div><button class="btn" id="yes">Yes</button><button class="btn" id="no" style="background:#444">No</button></div>
 <button class="btn" id="gbtn">Enter Garage</button>
 <div id="garage"><div id="gtop"><b style="font-size:18px">GARAGE</b><span id="gcash"></span><button class="btn sm" id="gexit" style="background:#2a7">Exit ▶</button></div>
-<div id="tabs"><button class="tab on" data-tab="mine">My Cars</button><button class="tab" data-tab="deal">Dealership</button><button class="tab" data-tab="upg">Upgrades</button><button class="tab" data-tab="paint">Paint</button></div><div id="gbody"></div></div>
+<div id="tabs"><button class="tab on" data-tab="mine">My Cars</button><button class="tab" data-tab="deal">Dealership</button><button class="tab" data-tab="upg">Parts</button><button class="tab" data-tab="tune">Tune</button><button class="tab" data-tab="paint">Paint</button></div><div id="gbody"></div></div>
 <div id="gname"></div><button id="steerT"></button><div id="notice"></div>
 <div id="rot">↻ Rotate your device to landscape</div>
 <script type="module">
@@ -79,30 +83,91 @@ const CARS=[
  {id:'kestrel',name:'Kestrel 66',color:0xf2d230,stripe:0x111111,top:51,acc:24,grip:2.25,shape:'pony',price:20000},
  {id:'haymaker',name:'Haymaker 70',color:0x2e6b3f,stripe:0xe8e0c8,top:49,acc:20,grip:1.85,shape:'hauler',price:28000},
  {id:'longshot',name:'Longshot 69',color:0xb7c2cc,stripe:0x1a2a6c,top:61,acc:20,grip:1.75,shape:'coupe',price:48000},
- {id:'hammer',name:'Hammerhead 72',color:0x0f7c7a,stripe:0xffd23f,top:63,acc:26,grip:1.9,shape:'wide',price:72000}];
+ {id:'hammer',name:'Hammerhead 72',color:0x0f7c7a,stripe:0xffd23f,top:63,acc:26,grip:1.9,shape:'wide',price:72000},
+ {id:'gale',name:'Gale 4R',color:0x1d3fa8,stripe:0xd8b23a,top:53,acc:24,grip:2.1,shape:'sedan4',price:26000,drive:'awd',ind:'turbo'},
+ {id:'tempest',name:'Tempest T6',color:0xe8e8e8,stripe:0x111111,top:58,acc:23,grip:2.0,shape:'lnose',price:38000,drive:'rwd',ind:'turbo'},
+ {id:'ronin',name:'Ronin 33',color:0xc8102e,stripe:0x222222,top:56,acc:23,grip:2.05,shape:'zc',price:34000,drive:'rwd'}];
 const CAR=id=>CARS.find(c=>c.id===id);
 const RACE_CARS=['bandit','thunder','ridge'].map(CAR);
 // upgrade effects are fractions of the car's stock stat per level, so every car gains noticeably (max all = +33% top, +54% accel, +19.5% grip)
-const UPG=[{k:'eng',name:'Engine',cost:[2000,5000,10000],top:.07,acc:.05,grip:0},
- {k:'trn',name:'Transmission',cost:[1500,3500,7500],top:.03,acc:.07,grip:0},
- {k:'tir',name:'Tires',cost:[1000,2500,5000],top:0,acc:.02,grip:.05,off:.25},
- {k:'wgt',name:'Weight reduction',cost:[1200,3000,6500],top:.01,acc:.04,grip:.015}];
+// ===== PARTS: each option [key,name,tier,price,fx]; fx are fractional bonuses (top/acc/grip), off = share of loose-surface penalty removed,
+// launch/brake multipliers, drift = rear-slide tendency 0..1, ride = ride height (m), vis = visual flag
+const PARTS=[
+ {k:'intake',g:'Engine',name:'Intake',o:[['stock','Stock','Stock',0,{}],['street','Street intake','Street',800,{top:.02,acc:.02}],['sport','Sport intake','Sport',2000,{top:.04,acc:.04}],['race','Race intake','Race',4500,{top:.06,acc:.06}]]},
+ {k:'exhaust',g:'Engine',name:'Exhaust',o:[['stock','Stock','Stock',0,{}],['street','Street exhaust','Street',700,{top:.02,acc:.015}],['sport','Sport exhaust','Sport',1800,{top:.035,acc:.03}],['race','Race exhaust','Race',4000,{top:.05,acc:.045}]]},
+ {k:'cams',g:'Engine',name:'Camshafts',o:[['stock','Stock','Stock',0,{}],['street','Street cams','Street',900,{top:.02,acc:.02}],['sport','Sport cams','Sport',2400,{top:.04,acc:.035}],['race','Race cams','Race',5000,{top:.06,acc:.05,launch:-.03}]]},
+ {k:'block',g:'Engine',name:'Block / internals',o:[['stock','Stock','Stock',0,{}],['sport','Forged internals','Sport',3500,{top:.04,acc:.05}],['race','Stroker block','Race',9000,{top:.08,acc:.09}]]},
+ {k:'swap',g:'Engine',name:'Engine swap',o:[['stock','Factory engine','Stock',0,{}],['v8','Big-block V8 swap','Drag',14000,{top:.12,acc:.16,grip:-.03,launch:.1}],['i6','Turbo inline-6 swap','Race',16000,{top:.16,acc:.1,launch:-.05}],['rot','Twin-rotor swap','Drift',12000,{top:.1,acc:.08,grip:.02,drift:.05}],['box','Boxer-4 turbo swap','Rally',11000,{top:.07,acc:.09,off:.05}]]},
+ {k:'ind',g:'Forced induction',name:'Forced induction',o:[['none','Naturally aspirated','Stock',0,{}],['turbo','Single turbo','Sport',6000,{top:.1,acc:.08,launch:-.08}],['twin','Twin turbo','Race',11000,{top:.16,acc:.12,launch:-.05}],['super','Supercharger','Drag',8000,{top:.08,acc:.12,launch:.08}]]},
+ {k:'trans',g:'Drivetrain',name:'Transmission',o:[['stock','Stock','Stock',0,{}],['street','Street gearbox','Street',1500,{top:.01,acc:.04}],['sport','Close-ratio','Sport',3500,{top:.03,acc:.07}],['race','Sequential','Race',7500,{top:.05,acc:.1}]]},
+ {k:'diff',g:'Drivetrain',name:'Differential',o:[['open','Open diff','Stock',0,{}],['lsd','Limited-slip','Sport',1800,{launch:.06,grip:.02,drift:.1}],['locked','Locked / welded','Drift',1200,{launch:.1,grip:-.03,drift:.25}]]},
+ {k:'drive',g:'Drivetrain',name:'Drive swap',o:[['stock','Factory layout','Stock',0,{}],['fwd','FWD conversion','Street',5000,{}],['rwd','RWD conversion','Drift',5000,{}],['awd','AWD conversion','Rally',9000,{}]]},
+ {k:'tires',g:'Tires & suspension',name:'Tires',o:[['street','Street tires','Stock',0,{}],['sport','Sport tires','Sport',1200,{grip:.06,off:.1,acc:.02}],['slick','Race slicks','Race',3000,{grip:.14,off:-.3,launch:.05,vis:'wide'}],['rally','Gravel rally tires','Rally',2200,{grip:.02,off:.72}],['dragr','Drag radials','Drag',1800,{launch:.35,grip:-.05,off:-.1,vis:'wide'}],['drift','Drift tires','Drift',1500,{grip:-.02,drift:.35}]]},
+ {k:'susp',g:'Tires & suspension',name:'Suspension',o:[['stock','Stock','Stock',0,{}],['sport','Sport springs','Sport',1500,{grip:.05,ride:-.04}],['race','Race coilovers','Race',4000,{grip:.1,off:-.15,ride:-.08}],['rally','Raised rally','Rally',3500,{grip:.01,off:.35,ride:.16,vis:'flaps'}],['drag','Drag suspension','Drag',2500,{launch:.2,grip:-.08,vis:'wbar'}],['drift','Drift coilovers','Drift',2800,{grip:.03,drift:.2,ride:-.06}]]},
+ {k:'brakes',g:'Chassis',name:'Brakes',o:[['stock','Stock','Stock',0,{}],['street','Street pads','Street',900,{brake:.15}],['sport','Sport calipers','Sport',2200,{brake:.3}],['race','Race carbon brakes','Race',5000,{brake:.5}]]},
+ {k:'weight',g:'Chassis',name:'Weight reduction',o:[['stock','Stock','Stock',0,{}],['street','Street','Street',1200,{top:.01,acc:.04,grip:.015}],['sport','Sport','Sport',3000,{top:.02,acc:.08,grip:.03}],['race','Race (gutted)','Race',6500,{top:.03,acc:.12,grip:.045}]]},
+ {k:'front',g:'Aero',name:'Front aero',o:[['none','None','Stock',0,{}],['split','Race splitter','Race',1500,{grip:.03,vis:'split'}]]},
+ {k:'rear',g:'Aero',name:'Rear aero',o:[['none','None','Stock',0,{}],['spoiler','Ducktail spoiler','Street',1200,{grip:.03,top:-.005,vis:'spoiler'}],['wing','Race wing','Race',4000,{grip:.07,top:-.02,vis:'wing'}]]},
+ {k:'lights',g:'Aero',name:'Roof lights',o:[['none','None','Stock',0,{}],['pod','Rally light pod','Rally',600,{vis:'pod'}]]}];
+const PART=(k,o)=>{const c=PARTS.find(p=>p.k===k);return c&&c.o.find(x=>x[0]===o);};
+const stockParts=id=>{const c=CAR(id)||{},o={};for(const p of PARTS)o[p.k]=p.o[0][0];if(c.ind)o.ind=c.ind;return o;};
+const TUNE0={tp:.5,fd:.5,cam:.5,spr:.5,arb:.5,dif:.5,dn:.5};
+const TUNES=[['tp','Tire pressure','Low (grip on dirt)','High (road speed)'],['fd','Final drive','Long (top speed)','Short (acceleration)'],['cam','Camber','0°','-3°'],['spr','Springs','Soft (bumps/dirt)','Stiff (road grip)'],['arb','Anti-roll bars','Understeer','Oversteer'],['dif','Diff lock','Open','Locked'],['dn','Downforce','Low drag','Max grip']];
+const PRESETS=[
+ {k:'street',name:'Street',col:'#7fb3ff',p:{intake:'street',exhaust:'street',cams:'street',trans:'street',tires:'sport',susp:'sport',brakes:'street',weight:'street'},t:{}},
+ {k:'rally',name:'Rally',col:'#d9a441',p:{intake:'sport',exhaust:'sport',cams:'sport',ind:'turbo',trans:'sport',diff:'lsd',drive:'awd',tires:'rally',susp:'rally',brakes:'sport',weight:'sport',rear:'spoiler',lights:'pod'},t:{tp:.2,spr:.15,fd:.65,arb:.55}},
+ {k:'drag',name:'Drag',col:'#ff5a3c',p:{intake:'race',exhaust:'race',cams:'race',block:'race',ind:'twin',trans:'race',diff:'locked',drive:'rwd',tires:'dragr',susp:'drag',weight:'race'},t:{fd:.3,dif:1,tp:.4}},
+ {k:'drift',name:'Drift',col:'#c77dff',p:{intake:'sport',exhaust:'sport',cams:'sport',ind:'super',trans:'sport',diff:'locked',drive:'rwd',tires:'drift',susp:'drift',brakes:'sport',weight:'sport',front:'split',rear:'spoiler'},t:{arb:.9,dif:1,cam:.9,tp:.7}},
+ {k:'track',name:'Track',col:'#3fd17a',p:{intake:'race',exhaust:'race',cams:'race',block:'sport',ind:'turbo',trans:'race',diff:'lsd',tires:'slick',susp:'race',brakes:'race',weight:'race',front:'split',rear:'wing'},t:{spr:.8,cam:.6,dn:.8}}];
+const CLASSES=[['D',500,'#58b7e8'],['C',600,'#f2c200'],['B',700,'#ff8a1a'],['A',800,'#e8333c'],['S1',900,'#b34be0'],['S2',998,'#2f6ff0'],['X',999,'#3fd17a']];
+const classOf=pi=>CLASSES.find(c=>pi<=c[1])||CLASSES[6];
 const PAINTS=[0x111111,0xc8102e,0x1f6fd1,0xff7a1a,0x7fc8a9,0x5b2a86,0xe8e8e8,0xf2c200,0x2e7d32,0x8b5a2b];
 const FINISHES=[{k:'gloss',name:'Gloss paint',cost:0},{k:'matte',name:'Matte',cost:1500},{k:'metal',name:'Metallic flake',cost:3000},{k:'glass',name:'Fiberglass',cost:5000},{k:'cacc',name:'Carbon accents',cost:6000},{k:'carbon',name:'Carbon fiber',cost:12000}];
 const PAINT_COST=500,PAYOUT=[5000,3000,1500,500],SAVE_KEY='am_save';
-function newEntry(){return{eng:0,trn:0,tir:0,wgt:0,paint:null,finish:'gloss',spent:0};}
+function newEntry(id){return{parts:stockParts(id),inv:[],tune:{...TUNE0},builds:[],paint:null,finish:'gloss',spent:0};}
+// old saves had eng/trn/tir/wgt levels 0-3: convert them to the equivalent installed (and owned) parts
+function migrateEntry(id,o){const e=newEntry(id),T=['stock','street','sport','race'],lv=k=>Math.max(0,Math.min(3,o[k]|0));
+ if(o.parts&&typeof o.parts==='object'){for(const p of PARTS)if(PART(p.k,o.parts[p.k]))e.parts[p.k]=o.parts[p.k];
+  e.inv=Array.isArray(o.inv)?o.inv.filter(x=>typeof x==='string'&&PART(...x.split(':'))):[];
+  if(o.tune&&typeof o.tune==='object')for(const k in TUNE0){const v=+o.tune[k];if(Number.isFinite(v))e.tune[k]=Math.max(0,Math.min(1,v));}
+  if(Array.isArray(o.builds))e.builds=o.builds.filter(b=>b&&b.parts).slice(0,6).map(b=>({name:String(b.name||'Build').slice(0,24),parts:{...e.parts,...b.parts},tune:{...TUNE0,...(b.tune||{})}}));}
+ else{const el=lv('eng'),tl=lv('trn'),ti=lv('tir'),wl=lv('wgt');
+  if(el){for(const k of['intake','exhaust','cams'])e.parts[k]=T[el];if(el>=2)e.parts.block=el>=3?'race':'sport';}
+  if(tl)e.parts.trans=T[tl];if(wl)e.parts.weight=T[wl];
+  if(ti){e.parts.tires='sport';if(ti>=2)e.parts.susp='sport';if(ti>=3)e.inv.push('tires:rally');}}
+ for(const p of PARTS){const v=e.parts[p.k];if(v!==p.o[0][0]&&!e.inv.includes(p.k+':'+v))e.inv.push(p.k+':'+v);}
+ e.spent=Math.max(0,+o.spent||0);e.paint=o.paint!=null&&Number.isFinite(+o.paint)?+o.paint:null;e.finish=FINISHES.some(f=>f.k===o.finish)?o.finish:'gloss';return e;}
 function loadSave(){let s=null;try{s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){s=null;}
  if(!s||typeof s!=='object')s={};
  const out={v:1,cash:Number.isFinite(+s.cash)&&s.cash!==null?Math.max(0,Math.floor(+s.cash)):10000,owned:{},active:null};
- if(s.owned&&typeof s.owned==='object')for(const id in s.owned)if(CAR(id)){const e=Object.assign(newEntry(),s.owned[id]);for(const u of UPG)e[u.k]=Math.max(0,Math.min(3,e[u.k]|0));e.spent=Math.max(0,+e.spent||0);if(e.paint!=null&&!Number.isFinite(+e.paint))e.paint=null;if(!FINISHES.some(f=>f.k===e.finish))e.finish='gloss';out.owned[id]=e;}
- if(!Object.keys(out.owned).length)out.owned.bandit=newEntry();
+ if(s.owned&&typeof s.owned==='object')for(const id in s.owned)if(CAR(id)){out.owned[id]=migrateEntry(id,s.owned[id]||{});}
+ if(!Object.keys(out.owned).length)out.owned.bandit=newEntry('bandit');
  out.active=out.owned[s.active]?s.active:Object.keys(out.owned)[0];return out;}
 let save=loadSave();const persist=()=>localStorage.setItem(SAVE_KEY,JSON.stringify(save));persist();
-// surface multipliers on the car's (upgraded) stats; each tire level removes 25% of the loose-surface penalty (max tires recover 75%)
+// surface multipliers: d.off (0..0.95) is the share of the loose-surface penalty the build removes (gravel tires + rally springs + AWD); negative = worse
 const SURFP={paved:{top:1,acc:1,grip:1},dirt:{top:.82,acc:.85,grip:.88},off:{top:.5,acc:.62,grip:.8},canyon:{top:.43,acc:.58,grip:.8}};
-function surfMul(d,type){const p=SURFP[type]||SURFP.paved,k=1-.25*Math.min(3,d.tir|0);return{top:1-(1-p.top)*k,acc:1-(1-p.acc)*k,grip:1-(1-p.grip)*k};}
-function effDef(id){const b=CAR(id),e=save.owned[id]||newEntry();const d={...b};
- let ft=1,fa=1,fg=1;for(const u of UPG){const l=e[u.k]|0;ft+=u.top*l;fa+=u.acc*l;fg+=u.grip*l;}d.top=b.top*ft;d.acc=b.acc*fa;d.grip=b.grip*fg;d.tir=e.tir|0;d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
+function surfMul(d,type){const p=SURFP[type]||SURFP.paved,k=1-(d.off||0),f=x=>Math.max(.3,1-(1-x)*k);return{top:f(p.top),acc:f(p.acc),grip:f(p.grip)};}
+function buildDef(id,parts,tune){const b=CAR(id),d={...b},P={...stockParts(id),...parts},t={...TUNE0,...tune},F={top:0,acc:0,grip:0,off:0,launch:0,brake:0,drift:0,ride:0},vis={};
+ for(const c of PARTS){const o=PART(c.k,P[c.k])||c.o[0];for(const k in o[4])if(k==='vis')vis[o[4].vis]=1;else F[k]+=o[4][k];}
+ const dr=P.drive==='stock'?(b.drive||'rwd'):P.drive;d.drive=dr;
+ if(dr==='awd'){F.launch+=.22;F.off+=.25;F.drift-=.3;F.top-=.02;F.grip+=.04;}else if(dr==='fwd'){F.launch-=.1;F.drift-=.4;F.off+=.08;}else{F.drift+=.12;}
+ // tuning: small, real trade-offs
+ F.off+=.24*(.5-t.tp);F.grip-=.06*Math.abs(t.tp-.5);F.top+=.02*(t.tp-.5);
+ const fd=t.fd-.5;F.acc+=.16*fd;F.top-=.12*fd;F.launch+=.1*fd;
+ F.grip+=.03-.1*Math.abs(t.cam-.6);F.drift+=.06*(t.cam-.5);
+ F.grip+=.05*(t.spr-.5);F.off-=.2*(t.spr-.5);
+ F.drift+=.24*(t.arb-.5);F.grip-=.04*Math.abs(t.arb-.5);
+ F.launch+=.1*(t.dif-.5);F.drift+=.16*(t.dif-.5);
+ const aero=vis.wing?1:vis.spoiler?.5:0;if(aero){F.grip+=.06*aero*(t.dn-.5);F.top-=.03*aero*(t.dn-.5);}
+ d.top=b.top*(1+F.top);d.acc=b.acc*(1+F.acc);d.grip=b.grip*(1+F.grip);d.off=Math.max(-.6,Math.min(.95,F.off));d.launch=Math.max(.6,1+F.launch);d.brake=1+F.brake;
+ d.drift=Math.max(0,Math.min(1,.1+F.drift));d.ride=F.ride;d.vis=vis;d.parts=P;d.tune=t;
+ const st=statsOf(d);d.stats=st;d.pi=st.pi;d.cls=classOf(st.pi)[0];return d;}
+function statsOf(d){const so=surfMul(d,'dirt'),cl=v=>Math.max(0,Math.min(10,v));
+ const s={speed:cl(d.top*2.237/20),hand:cl(d.grip*3.4*(1-.25*d.drift)),accel:cl(d.acc/4),launch:cl(d.acc*d.launch/4.4),brake:cl(5*d.brake),off:cl(d.top*so.top*2.237/16),drift:cl(d.drift*10)};
+ s.t60=26.82/(d.acc*(1+(d.launch-1)*.8));
+ s.pi=Math.max(100,Math.min(999,Math.round((.32*s.speed+.28*s.hand+.2*s.accel+.08*s.launch+.06*s.brake+.06*s.off)*150-420)));return s;}
+function effDef(id){const b=CAR(id),e=save.owned[id]||newEntry(id);const d=buildDef(id,e.parts,e.tune);d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
+const partsCost=(id,P)=>{const e=save.owned[id];let c=0;for(const k in P){const o=PART(k,P[k]);if(o&&o[3]&&e.parts[k]!==P[k]&&!e.inv.includes(k+':'+P[k]))c+=o[3];}return c;};
 const money=n=>'$'+Math.round(n).toLocaleString('en-US');
 const sellValue=id=>Math.round(.6*(CAR(id).price+save.owned[id].spent));
 // ================= RENDERER =================
@@ -133,7 +198,7 @@ function mergeParts(parts){const P=[],Nn=[],C=[];const col=new THREE.Color();
   for(let i=0;i<pa.length;i++){P.push(pa[i]);Nn.push(na[i]);}for(let i=0;i<pa.length/3;i++)C.push(col.r,col.g,col.b);g.dispose();p.g.dispose();}
  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('normal',new THREE.Float32BufferAttribute(Nn,3));g.setAttribute('color',new THREE.Float32BufferAttribute(C,3));return g;}
 const VC=new THREE.MeshLambertMaterial({vertexColors:true});
-const CARSPEC={fast:[4.5,2,.95,1.42,1.6,.9,1.2],compact:[4.1,1.85,.95,1.45,1.3,1,.5],notch:[4.5,2,.97,1.45,1.55,1,.45],long:[4.9,2,.95,1.42,1.8,1,.55],wedge:[4.5,2.1,.9,1.33,1.7,.8,1.1],brute:[4.9,2.1,1,1.5,1.85,1.05,.5],pony:[4.1,1.85,.9,1.35,1.5,.75,1],hauler:[5,2,1.05,1.72,1.5,.8,.08],coupe:[5.2,2,.9,1.35,2.3,.7,.9],wide:[4.9,2.35,.97,1.45,1.75,.9,.7]};
+const CARSPEC={fast:[4.5,2,.95,1.42,1.6,.9,1.2],compact:[4.1,1.85,.95,1.45,1.3,1,.5],notch:[4.5,2,.97,1.45,1.55,1,.45],long:[4.9,2,.95,1.42,1.8,1,.55],wedge:[4.5,2.1,.9,1.33,1.7,.8,1.1],brute:[4.9,2.1,1,1.5,1.85,1.05,.5],pony:[4.1,1.85,.9,1.35,1.5,.75,1],hauler:[5,2,1.05,1.72,1.5,.8,.08],sedan4:[4.45,1.9,.97,1.5,1.3,1.3,.62],lnose:[4.45,1.95,.86,1.3,1.95,.72,.82],zc:[4.25,1.95,.9,1.33,1.6,.7,.95],coupe:[5.2,2,.9,1.35,2.3,.7,.9],wide:[4.9,2.35,.97,1.45,1.75,.9,.7]};
 const WR=.38;
 const WHEELS=(()=>{const o=new THREE.Object3D();o.rotation.z=-Math.PI/2;o.updateMatrix();const m=o.matrix.clone(),V=(a)=>a.map(p=>new THREE.Vector2(p[0],p[1]));
  // tire: rounded sidewalls, tread; rotated so lathe axis (y) becomes car x
@@ -148,7 +213,7 @@ const WHEELS=(()=>{const o=new THREE.Object3D();o.rotation.z=-Math.PI/2;o.update
   else{for(let k=0;k<6;k++){const a=k*Math.PI/3,g=new THREE.CylinderGeometry(.018,.018,.02,5);g.translate(Math.sin(a)*WR*.32,.1,Math.cos(a)*WR*.32);p.push({g,m,c:0x8a8a8a});}}
   return mergeParts(p);};
  return{dish:mk(false),slot:mk(true)};})();
-const WHEEL=WHEELS.dish,wheelFor=sh=>sh==='wide'||sh==='wedge'||sh==='coupe'||sh==='brute'?WHEELS.slot:WHEELS.dish;
+const WHEEL=WHEELS.dish,wheelFor=sh=>sh==='zc'||sh==='lnose'||sh==='wide'||sh==='wedge'||sh==='coupe'||sh==='brute'?WHEELS.slot:WHEELS.dish;
 const CARGEO=new Map();
 function carGeo(sh,_b,st){const body=-2,key=sh+'|'+st;if(CARGEO.has(key))return CARGEO.get(key);
  const S=CARSPEC[sh]||CARSPEC.fast,[L,WD,belt,roofY,hoodL,roofL,rearL]=S,parts=[],o=new THREE.Object3D();
@@ -160,9 +225,9 @@ function carGeo(sh,_b,st){const body=-2,key=sh+'|'+st;if(CARGEO.has(key))return 
   const d=Math.max(.02,w-2*b);const g=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:b>0,bevelThickness:b,bevelSize:b,bevelSegments:1,curveSegments:5});
   g.rotateY(-Math.PI/2);g.translate(d/2+x,0,0);parts.push({g,m:new THREE.Matrix4(),c});};
  const arch=(z)=>{const a=[];for(let i=0;i<=8;i++){const t=Math.PI-i*Math.PI/8;a.push([z+Math.cos(t)*AR,y0+Math.sin(t)*AR*.95]);}return a;};
- const cowl=H-hoodL,rake=sh==='hauler'?.35:sh==='wedge'||sh==='coupe'?.7:.55,rF=cowl-rake,rB=rF-roofL,bk=rB-rearL;
+ const cowl=H-hoodL,rake=sh==='hauler'?.35:sh==='wedge'||sh==='coupe'||sh==='lnose'?.7:sh==='zc'?.8:.55,rF=cowl-rake,rB=rF-roofL,bk=rB-rearL;
  const bed=sh==='hauler',tail=bed?belt:belt-.02;
- const CURVY={pony:[.03,.06,.14],coupe:[.03,.07,.12],wedge:[.075,.08,.16],long:[.04,.06,.1],fast:[.045,.07,.12],wide:[.03,.05,.12]}[sh];
+ const CURVY={pony:[.03,.06,.14],coupe:[.03,.07,.12],wedge:[.075,.08,.16],long:[.04,.06,.1],lnose:[.055,.08,.15],zc:[.045,.07,.16],fast:[.045,.07,.12],wide:[.03,.05,.12]}[sh];
  if(CURVY){const [cb,shoulder,tumble]=CURVY;
   // smooth side profile: spline top line + true arcs for wheel openings
   const sp=(P,n)=>new THREE.SplineCurve(P.map(p=>new THREE.Vector2(p[0],p[1]))).getPoints(n).map(v=>[v.x,v.y]);
@@ -225,7 +290,7 @@ function carGeo(sh,_b,st){const body=-2,key=sh+'|'+st;if(CARGEO.has(key))return 
  // exhaust tips
  for(const s of[1,-1])put(new THREE.CylinderGeometry(.05,.05,.25,6),s*.5,.36,-H-.06,chr,Math.PI/2);
  // traits
- if(sh==='notch'||sh==='long'||sh==='brute'||sh==='wide'||sh==='fast'){const big=sh==='brute'||sh==='wide';box(big?.8:.6,big?.2:.1,big?1.1:.8,0,belt+(big?.12:.08),cowl+(H-cowl)*.45,big&&sh==='brute'?chr:sh==='wide'?blk:body);if(big)box(.6,.12,.05,0,belt+.14,cowl+(H-cowl)*.45+.56,blk);}
+ if(sh==='notch'||sh==='long'||sh==='brute'||sh==='wide'||sh==='fast'||sh==='sedan4'){const big=sh==='brute'||sh==='wide';box(big?.8:.6,big?.2:.1,big?1.1:.8,0,belt+(big?.12:.08),cowl+(H-cowl)*.45,big&&sh==='brute'?chr:sh==='wide'?blk:body);if(big)box(.6,.12,.05,0,belt+.14,cowl+(H-cowl)*.45+.56,blk);}
  if(sh==='wedge'||sh==='wide'){const ww=sh==='wide'?WD+.1:WD-.1;box(ww,.06,.4,0,tail+.32,-H+.25,sh==='wide'?blk:body,-.12);for(const s of[1,-1])box(.06,.3,.18,s*ww*.38,tail+.15,-H+.28,blk);}
  if(sh==='coupe'){box(.5,.07,1.4,0,belt+.06,(H+cowl)/2,blk);}
  if(sh==='pony'){box(WD-.3,.04,.25,0,tail+.04,-H+.2,body,-.2);}
@@ -271,10 +336,20 @@ function makeCar(def,color,parent=scene){const car=new THREE.Group();const body=
  const g=carGeo(def.shape,body,def.stripe);const f=def.finish||'gloss',hi=def.finish!==undefined||parent===gScene;
  const pm=finishMat(f==='cacc'?'gloss':f,body,hi),am=f==='cacc'?finishMat('carbon',body,hi):pm;car.add(new THREE.Mesh(g,[VC,pm,am]));const{WD,wz}=g.userData;
  car.wheels=[];for(const s of[1,-1]){const w=new THREE.Mesh(wheelFor(def.shape),VC);w.position.set(s*(WD/2-.08),WR,wz);w.scale.x=s;car.add(w);car.wheels.push(w);}
+ if(def.ride)car.children[0].position.y=def.ride;if(def.vis)partVis(car,def,g.userData);
  car.traverse(m=>{if(m.isMesh)m.castShadow=true;});const bl=new THREE.Mesh(BLOBG,BLOBM);bl.scale.set(WD+.9,1,(g.userData.L||4.6)+1.2);bl.position.y=.03;bl.renderOrder=1;car.add(bl);
  parent.add(car);return car;}
 const BLOBG=new THREE.PlaneGeometry(1,1).rotateX(-Math.PI/2),BLOBM=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,4,32,32,32);g.addColorStop(0,'rgba(0,0,0,.65)');g.addColorStop(.6,'rgba(0,0,0,.35)');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,64,64);
  return new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});})();
+const PM={k:new THREE.MeshLambertMaterial({color:0x161616}),y:new THREE.MeshBasicMaterial({color:0xfff2b0}),r:new THREE.MeshLambertMaterial({color:0x9a1a1a})},PB=new THREE.BoxGeometry(1,1,1);
+function partVis(car,def,u){const v=def.vis,S=CARSPEC[def.shape]||CARSPEC.fast,L=S[0],WD=u.WD,H=L/2,ry=def.ride||0,bx=(w,h,d,x,y,z,m=PM.k,rx=0)=>{const b=new THREE.Mesh(PB,m);b.scale.set(w,h,d);b.position.set(x,y,z);b.rotation.x=rx;car.add(b);};
+ if(v.wide)for(const w of car.wheels)w.scale.x*=1.3;
+ if(v.wing){for(const s of[1,-1])bx(.06,.42,.12,s*WD*.3,S[2]+.2+ry,-H+.32);bx(WD*.92,.05,.42,0,S[2]+.43+ry,-H+.3,PM.k,.12);for(const s of[1,-1])bx(.04,.2,.48,s*WD*.46,S[2]+.42+ry,-H+.3);}
+ else if(v.spoiler)bx(WD*.8,.05,.26,0,S[2]+.1+ry,-H+.18,PM.k,-.25);
+ if(v.split)bx(WD*.96,.04,.3,0,.26+ry,H+.06);
+ if(v.flaps)for(const z of[u.wz,-u.wz])for(const s of[1,-1])bx(.42,.34,.03,s*(WD/2-.3),.26+ry*.4,z-.6,PM.r);
+ if(v.pod){bx(WD*.66,.12,.18,0,S[3]+.1+ry,H-S[4]-.85);for(let i=0;i<4;i++)bx(.2,.16,.04,(i-1.5)*WD*.17,S[3]+.12+ry,H-S[4]-.74,PM.y);}
+ if(v.wbar){for(const s of[1,-1])bx(.06,.06,1.25,s*.42,.3,-H-.5,PM.k,-.12);bx(.96,.06,.06,0,.2,-H-1.1);for(const s of[1,-1])bx(.08,.2,.2,s*.5,.1,-H-1.12,PM.k);}}
 function disposeCar(m){if(!m)return;m.parent&&m.parent.remove(m);}
 function disposeAll(o){o.traverse(m=>{if(m.geometry)m.geometry.dispose();if(m.material){[].concat(m.material).forEach(x=>{if(x.map)x.map.dispose();x.dispose();});}});}
 // ================= RACE TRACKS =================
@@ -425,12 +500,18 @@ function finish(now){state='done';
   $('fintab').innerHTML=rows.map((r,i)=>{let t;if(r.done){pv=r.done;t=fmt(r.done);}else{const left=TRACKS[trackSel].rally?(r.cp>=gates.length?0:N-((r.seg>N*.9&&r.cp<2)?r.seg-N:r.seg)):SPR?N-SPF-r.seg:(LAPS-r.lap)*N-((r.seg)%N);pv=Math.max(pv+0.5,(now-raceStart)/1000+left*(pts[0].distanceTo(pts[1]))/Math.max(10,r.def.top*r.skill*.8));t='~'+fmt(pv);}
    return `<tr style="${r.ai?'':'color:#ff5'}"><td>${ord(i+1)}</td><td>${r.name}</td><td>${r.def.name}</td><td>${t}</td><td style="color:#7f7">+${money(PAY[i])}</td></tr>`}).join('');
   $('fint').textContent='FINISH — '+ord(place);$('payout').textContent=`You earned ${money(lastPayout)} · Cash ${money(save.cash)}`+(SPR?` · Traffic hits: ${player.hits||0}`:'')+(TRACKS[trackSel].rally?` · Splits: ${(player.splits||[]).map(fmt).join(' ')}`:'');$('fin').style.display='flex';},900);}
-function physics(r,dt,inp,off,maxV,sm){const d=r.def;
- if(inp.g)r.v+=(sm?d.acc*sm.acc:off?14:d.acc)*dt;else if(inp.b)r.v-=(r.v>0?40:10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
- if(r.v>maxV)r.v-=Math.min(r.v-maxV,40*dt);r.v=Math.max(-10,r.v);
+function physics(r,dt,inp,off,maxV,sm){const d=r.def,L=d.launch||1,v0=r.v;
+ if(inp.g)r.v+=(sm?d.acc*sm.acc:off?14:d.acc)*(r.v<18?L:1+(L-1)*.25)*dt;else if(inp.b)r.v-=(r.v>0?40*(d.brake||1):10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
+ if(r.v>maxV)r.v=Math.max(maxV,Math.min(r.v,v0)-40*dt);r.v=Math.max(-10,r.v);
  r.steer+=(inp.s-r.steer)*Math.min(1,dt*8);
- const turn=r.steer*Math.min(1,Math.abs(r.v)/8)*((sm?d.grip*sm.grip:d.grip)-Math.abs(r.v)/80)*Math.sign(r.v||1);r.h+=turn*dt;
- r.x+=Math.sin(r.h)*r.v*dt;r.z+=Math.cos(r.h)*r.v*dt;}
+ const G=sm?d.grip*sm.grip:d.grip,dr=d.drift||0;
+ const turn=r.steer*Math.min(1,Math.abs(r.v)/8)*(G-Math.abs(r.v)/80)*Math.sign(r.v||1)*(sm?1+dr*(inp.g?.6:.2)*Math.min(1,Math.abs(r.v)/20):1);r.h+=turn*dt;
+ if(!sm){r.x+=Math.sin(r.h)*r.v*dt;r.z+=Math.cos(r.h)*r.v*dt;return;}
+ // rear grip model: velocity heading chases the body heading; low rear grip (drift build, loose surface) = slow catch-up = slide
+ if(r.vh==null||Math.abs(r.v)<3)r.vh=r.h;const a=Math.atan2(Math.sin(r.h-r.vh),Math.cos(r.h-r.vh));
+ const rg=G*5*(1-.66*dr)*(inp.g&&dr>.4?.8:1)*(sm.grip<.95?.75:1);r.vh+=a*Math.min(1,dt*rg);r.slip=a;
+ r.v-=Math.abs(Math.sin(a))*r.v*dt*(.6-.45*dr);
+ r.x+=Math.sin(r.vh)*r.v*dt;r.z+=Math.cos(r.vh)*r.v*dt;}
 function step(r,dt,now,inp){const sx=r.x,sz=r.z;
  const n=nearest(r.x,r.z,r.seg-30,61);const off=n.d>W+0.6,T=TRACKS[trackSel];
  if(T.rally){// loose dirt: no speed cap on the stage, velocity lags heading -> rear slides, countersteer catches it
@@ -1161,6 +1242,12 @@ function drawMini(now){mctx.drawImage(mbg,0,0,MS,MS);for(const mk of MARKERS){mc
  mctx.fillStyle='#30ff70';mctx.fillRect(mx(GARAGE.x)-2.5,mz(GARAGE.z)-2.5,5,5);
  const p=free;mctx.save();mctx.translate(mx(p.x),mz(p.z));mctx.rotate(-p.h);mctx.fillStyle='#ff0';mctx.beginPath();mctx.moveTo(0,4.5);mctx.lineTo(-3,-3.5);mctx.lineTo(3,-3.5);mctx.fill();mctx.restore();}
 let free=null,activeMarker=null;
+const CLASSLIM={t1:'B',t2:'A',t3:'S1',t4:'X',t5:'A'};
+function classNote(T){const lim=CLASSLIM[T.id];if(!lim)return'';const d=effDef(save.active),li=CLASSES.findIndex(c=>c[0]===lim),ci=CLASSES.findIndex(c=>c[0]===d.cls);
+ return' ['+(lim==='X'?'Open class':'Class '+lim+' max')+' · you: '+d.cls+' '+d.pi+(ci>li?' — over the limit':'')+']';}
+function driftTick(dt){const f=free,a=Math.abs(f.slip||0),el=$('drift');
+ if(a>.22&&f.v>9){f.dc=(f.dc||0)+a*f.v*dt*12;f.dq=0;}else if(f.dc){f.dq=(f.dq||0)+dt;if(f.dq>.9||f.v<4){const pts=Math.round(f.dc);f.dc=0;if(pts>=50){f.dtot=(f.dtot||0)+pts;const best=+localStorage.getItem('am_drift_best')||0;if(pts>best){localStorage.setItem('am_drift_best',pts);flash('DRIFT +'+pts+' · NEW BEST!');}else flash('DRIFT +'+pts);}}}
+ if(el){const on=(f.dc||0)>5;el.style.display=on||f.dtot?'block':'none';el.textContent=on?'DRIFT '+Math.round(f.dc):'Drift score '+(f.dtot||0);}}
 function enterWorld(mk){garageHide();
  clearRace();clearTraffic();if(world){scene.remove(world);disposeAll(world);world=null;}
  openWorld.visible=true;setWorldFog();
@@ -1175,7 +1262,7 @@ function worldTick(dt,now){
  const inp=playerInput();
  const fy=free.y||0,ri=fy>1?{type:'paved'}:roadInfo(free.x,free.z),off=ri.type==='off',dirt=ri.type==='dirt';free.surface=ri.type;const fx0=free.x,fz0=free.z;
  const sm=surfMul(free.def,off?(canyonDist(free.x,free.z)<45?'canyon':'off'):dirt?'dirt':'paved');free.sm=sm;
- physics(free,dt,inp,off,free.def.top*sm.top,sm);
+ physics(free,dt,inp,off,free.def.top*sm.top,sm);driftTick(dt);
  fwMove(free,fx0,fz0,dt);
  // buildings + rocks collision approximated: buildings boxes (not when up on the freeway)
  if((free.y||0)<2)for(const b of openWorld.userData.bld){const hx=b[2]/2+1.2,hz=b[3]/2+1.2,dx=free.x-b[0],dz=free.z-b[1];if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz);if(px<pz)free.x+=Math.sign(dx)*px;else free.z+=Math.sign(dz)*pz;free.v*=.5;}}
@@ -1187,7 +1274,7 @@ function worldTick(dt,now){
   if(d<9){if(!mk.inside){mk.inside=true;mk.t=0;mk.prompted=false;}
    if(!mk.prompted){if(Math.abs(free.v)<1){mk.t+=dt;const f=Math.min(1,mk.t/5);const r=$('ring');r.style.display='flex';
       r.style.background=`conic-gradient(rgba(255,200,40,.9) ${f*360}deg,rgba(255,255,255,.15) 0)`;r.textContent=Math.ceil(5-mk.t);
-      if(mk.t>=5){mk.prompted=true;r.style.display='none';activeMarker=mk;$('ptxt').textContent='Join race: '+T.name+'?'+(T.sprint?' (1st '+money(T.pay[0])+', traffic!)':T.rally?' (time trial, 1st '+money(T.pay[0])+')':T.drag?' (win '+money(DRAG.win)+', perfect launch +'+money(DRAG.perfect)+')':'');$('prompt').style.display='block';}}
+      if(mk.t>=5){mk.prompted=true;r.style.display='none';activeMarker=mk;$('ptxt').textContent='Join race: '+T.name+'?'+classNote(T)+(T.sprint?' (1st '+money(T.pay[0])+', traffic!)':T.rally?' (time trial, 1st '+money(T.pay[0])+')':T.drag?' (win '+money(DRAG.win)+', perfect launch +'+money(DRAG.perfect)+')':'');$('prompt').style.display='block';}}
     else{mk.t=0;$('ring').style.display='none';hint='Stop here to join '+T.name;}}}
   else if(mk.inside){mk.inside=false;mk.t=0;mk.prompted=false;if(activeMarker===mk)hidePrompt();$('ring').style.display='none';}
   else if(d<60)hint=T.name+' race ahead';}
@@ -1202,12 +1289,18 @@ function garageHide(){$('garage').style.display='none';$('gname').style.display=
 function openGarage(){if(state!=='free')return;hidePrompt();$('gbtn').style.display='none';free.v=0;free.mesh.visible=false;state='garage';gView=save.active;gTab='mine';
  document.body.classList.remove('free');document.body.classList.add('garage');$('garage').style.display='flex';$('gname').style.display='block';renderGarage();}
 function showCar(id){gView=id;if(gCar)disposeCar(gCar);const d=save.owned[id]?effDef(id):CAR(id);gCar=makeCar(d,save.owned[id]?d.paint:d.color,gScene);gCar.position.y=0;}
-const MAXS=(()=>{const m={top:0,acc:0,grip:0};for(const c of CARS)for(const k in m)m[k]=Math.max(m[k],c[k]);return{top:m.top*1.34,acc:m.acc*1.55,grip:m.grip*1.2};})();
-function bars(id){const b=CAR(id),e=save.owned[id]?effDef(id):b;
- return [['Top speed','top'],['Acceleration','acc'],['Grip','grip']].map(([n,k])=>`<div style="font-size:12px">${n} <span style="opacity:.75">${k==='top'?Math.round(e[k]*2.237)+' mph':k==='acc'?(e[k]*2.237).toFixed(0)+' mph/s':e[k].toFixed(2)}</span></div><div class="bar"><i style="width:${e[k]/MAXS[k]*100}%;background:#f5a623"></i><i style="width:${b[k]/MAXS[k]*100}%;background:#d22"></i></div>`).join('')+(()=>{const so=surfMul(e,'dirt'),sb=surfMul(b,'dirt'),v=e.top*so.top,mx=MAXS.top;return`<div style="font-size:12px">Off-road <span style="opacity:.75">${Math.round(v*2.237)} mph on dirt · ${Math.round(so.top*100)}% of road pace</span></div><div class="bar"><i style="width:${v/mx*100}%;background:#f5a623"></i><i style="width:${b.top*sb.top/mx*100}%;background:#d22"></i></div>`})();}
+let gPrev=null;// {k,o} part being previewed
+const TIERC={Stock:'#9aa',Street:'#7fb3ff',Sport:'#f2c200',Race:'#ff5a3c',Rally:'#d9a441',Drift:'#c77dff',Drag:'#ff9a1a'};
+const piTag=d=>{const c=classOf(d.pi);return`<span class="pi"><i style="background:${c[2]}">${c[0]}</i><i>${d.pi}</i></span>`;};
+function bars(id,pv){const e=save.owned[id]?effDef(id):buildDef(id,{},{}),p=pv||e,a=e.stats,b=p.stats;
+ const row=(n,k,txt)=>{const x=a[k]*10,y=b[k]*10,lo=Math.min(x,y),hi=Math.max(x,y);return`<div style="font-size:12px;display:flex;justify-content:space-between"><span>${n}</span><span style="opacity:.8">${txt}</span></div><div class="bar"><i style="width:${hi}%;background:${y>x?'#3fd17a':'#e33'}"></i><i style="width:${lo}%;background:#f5a623"></i></div>`;};
+ const v=(x,y,f)=>f(x)===f(y)?f(x):f(x)+' → <b style="color:'+(y>x?'#7f7':'#f77')+'">'+f(y)+'</b>';
+ return`<div style="margin:2px 0">${piTag(e)}${pv&&pv.pi!==e.pi?' → '+piTag(pv):''} <span style="font-size:11px;opacity:.75">${e.drive.toUpperCase()}</span></div>`+
+  row('Speed','speed',v(e.top,p.top,x=>Math.round(x*2.237)+' mph'))+row('Handling','hand',v(a.hand,b.hand,x=>x.toFixed(1)))+row('Acceleration','accel',v(a.t60,b.t60,x=>'0-60 '+x.toFixed(2)+'s').replace(/#7f7|#f77/,m=>b.t60<a.t60?'#7f7':'#f77'))+
+  row('Launch','launch',v(a.launch,b.launch,x=>x.toFixed(1)))+row('Braking','brake',v(a.brake,b.brake,x=>x.toFixed(1)))+row('Offroad','off',v(e.top*surfMul(e,'dirt').top,p.top*surfMul(p,'dirt').top,x=>Math.round(x*2.237)+' mph dirt'))+row('Drift','drift',v(a.drift,b.drift,x=>x.toFixed(1)));}
 function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save.owned[gView]||'')){showCar(gView);gCar.uid=gView+JSON.stringify(save.owned[gView]||'');}
  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===gTab));
- $('gname').innerHTML=`${CAR(gView).name}${gView===save.active?' <span style="font-size:13px;color:#7f7">ACTIVE</span>':''}<div style="font:600 11px sans-serif;opacity:.8">red = base · orange = upgraded</div>${bars(gView)}`;
+ $('gname').innerHTML=`${CAR(gView).name}${gView===save.active?' <span style="font-size:13px;color:#7f7">ACTIVE</span>':''}${bars(gView,gTab==='upg'&&gPrev&&gView===save.active?buildDef(gView,{...save.owned[gView].parts,[gPrev.k]:gPrev.o},save.owned[gView].tune):null)}`;
  let h='';
  if(gTab==='mine'){const ids=Object.keys(save.owned),only=ids.length<2;
   for(const id of ids){const act=id===save.active;h+=`<div class="it${id===gView?' sel':''}" data-act="view" data-id="${id}"><div><b>${CAR(id).name}</b>${act?' <span style="color:#7f7">ACTIVE</span>':''}<br><span style="opacity:.7">Sell value ${money(sellValue(id))}</span></div><div>
@@ -1215,25 +1308,45 @@ function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save
   h+=`<div style="opacity:.6;font-size:11px">Selling returns 60% of price + upgrades. You can't sell your active or last car.</div>`;}
  else if(gTab==='deal'){for(const c of CARS){const own=!!save.owned[c.id];h+=`<div class="it${c.id===gView?' sel':''}" data-act="view" data-id="${c.id}"><div><b>${c.name}</b><br><span style="opacity:.7">${money(c.price)}${c.id==='bandit'?' · starter':''}</span></div>
   <button class="btn sm" data-act="buy" data-id="${c.id}" ${own||save.cash<c.price?'disabled':''}>${own?'Owned':'Buy'}</button></div>`;}}
- else if(gTab==='upg'){const id=save.active,e=save.owned[id];h+=`<div style="margin:2px 0 4px">Upgrading: <b>${CAR(id).name}</b></div>`;
-  for(const u of UPG){const l=e[u.k],cost=u.cost[l];h+=`<div class="it"><div><b>${u.name}</b> <span style="color:#f5a623">${'■'.repeat(l)}${'□'.repeat(3-l)}</span><br><span style="opacity:.7">${l>=3?'MAX':'Level '+(l+1)+' · '+money(cost)}</span><br><span style="opacity:.6;font-size:11px">${[u.top&&'+'+Math.round(u.top*100)+'% top',u.acc&&'+'+Math.round(u.acc*100)+'% accel',u.grip&&'+'+(u.grip*100).toFixed(1).replace('.0','')+'% grip',u.off&&'-'+Math.round(u.off*100)+'% off-road penalty'].filter(Boolean).join(', ')} per level</span></div>
-   <button class="btn sm" data-act="upg" data-k="${u.k}" ${l>=3||save.cash<cost?'disabled':''}>${l>=3?'Max':'Buy'}</button></div>`;}}
+ else if(gTab==='upg'){const id=save.active,e=save.owned[id],cur=effDef(id);h+=`<div style="margin:2px 0 4px">Building: <b>${CAR(id).name}</b> ${piTag(cur)} · tap a part to preview</div><div class="cat">Build presets</div><div class="pg">`;
+  for(const P of PRESETS){const all={...stockParts(id),...P.p},c=partsCost(id,all),d=buildDef(id,all,{...TUNE0,...P.t}),on=PARTS.every(x=>e.parts[x.k]===all[x.k]);
+   h+=`<div class="pt${on?' on':''}"><b style="color:${P.col}">${P.name}</b> ${piTag(d)}<br>${Math.round(d.top*2.237)} mph · dirt ${Math.round(d.top*surfMul(d,'dirt').top*2.237)}<br><button class="btn sm" style="margin-top:3px;width:100%" data-act="preset" data-k="${P.k}" ${on||save.cash<c?'disabled':''}>${on?'Installed':c?'Buy '+money(c):'Install (owned)'}</button></div>`;}
+  h+='</div>';let grp='';
+  for(const c of PARTS){if(c.g!==grp){grp=c.g;h+=`<div class="cat">${grp}</div>`;}h+=`<div style="font-size:12px;margin-top:3px">${c.name}</div><div class="pg">`;
+   for(const o of c.o){const on=e.parts[c.k]===o[0],own=!o[3]||e.inv.includes(c.k+':'+o[0]),pv=gPrev&&gPrev.k===c.k&&gPrev.o===o[0];
+    h+=`<div class="pt${on?' on':pv?' pv':''}" data-act="pv" data-k="${c.k}" data-o="${o[0]}"><span class="tier" style="background:${TIERC[o[2]]}">${o[2]}</span><br><b>${o[1]}</b><br><span style="opacity:.75">${on?'Installed':own?'Owned':money(o[3])}</span>${pv&&!on?`<br><button class="btn sm" style="margin-top:3px;width:100%" data-act="inst" data-k="${c.k}" data-o="${o[0]}" ${!own&&save.cash<o[3]?'disabled':''}>${own?'Install':'Buy'}</button>`:''}</div>`;}
+   h+='</div>';}}
+ else if(gTab==='tune'){const id=save.active,e=save.owned[id];h+=`<div style="margin:2px 0 4px">Tuning <b>${CAR(id).name}</b> · free, changes apply instantly</div>`;
+  for(const[k,n,lo,hi]of TUNES){const dis=k==='dn'&&!(e.parts.rear!=='none');h+=`<div style="font-size:12px;margin-top:4px">${n}${dis?' <span style="opacity:.6">(needs a spoiler or wing)</span>':''}</div><input type="range" min="0" max="100" value="${Math.round(e.tune[k]*100)}" data-tune="${k}" ${dis?'disabled':''}><div style="display:flex;justify-content:space-between;font-size:10px;opacity:.65"><span>${lo}</span><span>${hi}</span></div>`;}
+  h+=`<button class="btn sm" style="background:#555;margin:6px 0" data-act="treset">Reset tune</button><div class="cat">Saved builds &amp; tunes</div>`;
+  for(let i=0;i<e.builds.length;i++){const B=e.builds[i],c=partsCost(id,B.parts),d=buildDef(id,B.parts,B.tune);h+=`<div class="it"><div><b>${B.name.replace(/[<>&]/g,'')}</b> ${piTag(d)}<br><span style="opacity:.7">${c?'Missing parts '+money(c):'All parts owned'}</span></div><div><button class="btn sm" data-act="bload" data-i="${i}" ${save.cash<c?'disabled':''}>Load</button><button class="btn sm" style="background:#555" data-act="bdel" data-i="${i}">✕</button></div></div>`;}
+  h+=`<button class="btn sm" data-act="bsave" ${e.builds.length>=6?'disabled':''}>Save current build…</button>`;}
  else{const id=save.active,cur=effDef(id).paint;h+=`<div style="margin:2px 0 4px">Paint <b>${CAR(id).name}</b> · ${money(PAINT_COST)} per coat</div><div>`;
   for(const p of PAINTS)h+=`<span class="sw${p===cur?' on':''}" data-act="paint" data-c="${p}" style="background:#${p.toString(16).padStart(6,'0')}"></span>`;h+='</div>';
   const cf=save.owned[id].finish||'gloss';h+=`<div style="margin:8px 0 4px">Body finish</div>`;
   for(const f of FINISHES){const on=f.k===cf;h+=`<div class="it"><div><b>${f.name}</b>${on?' <span style="color:#7f7">ON</span>':''}<br><span style="opacity:.7">${f.cost?money(f.cost):'Free'}</span></div><button class="btn sm" data-act="finish" data-k="${f.k}" ${on||save.cash<f.cost?'disabled':''}>${on?'Applied':'Apply'}</button></div>`;}}
  $('gbody').innerHTML=h;}
+function installParts(P){const id=save.active,e=save.owned[id],c=partsCost(id,P);if(save.cash<c)return false;save.cash-=c;e.spent+=c;
+ for(const k in P){if(!PART(k,P[k]))continue;e.parts[k]=P[k];const t=k+':'+P[k];if(PART(k,P[k])[3]&&!e.inv.includes(t))e.inv.push(t);}return true;}
 function garageAct(a,el){const id=el.dataset.id;
  if(a==='view'){gView=id;}
  else if(a==='use'){if(save.owned[id]){save.active=id;gView=id;}}
  else if(a==='sell'){if(!save.owned[id]||id===save.active||Object.keys(save.owned).length<2)return;save.cash+=sellValue(id);delete save.owned[id];gView=save.active;flash('Sold '+CAR(id).name);}
- else if(a==='buy'){const c=CAR(id);if(!c||save.owned[id]||save.cash<c.price)return;save.cash-=c.price;save.owned[id]=newEntry();save.active=id;gView=id;flash('Bought '+c.name);}
- else if(a==='upg'){const e=save.owned[save.active],u=UPG.find(x=>x.k===el.dataset.k);const l=e[u.k];if(l>=3||save.cash<u.cost[l])return;save.cash-=u.cost[l];e.spent+=u.cost[l];e[u.k]=l+1;gView=save.active;}
+ else if(a==='buy'){const c=CAR(id);if(!c||save.owned[id]||save.cash<c.price)return;save.cash-=c.price;save.owned[id]=newEntry(id);save.active=id;gView=id;flash('Bought '+c.name);}
+ else if(a==='pv'){const k=el.dataset.k,o=el.dataset.o;gPrev=save.owned[save.active].parts[k]===o?null:{k,o};gView=save.active;renderGarage();return;}
+ else if(a==='inst'){if(!installParts({[el.dataset.k]:el.dataset.o}))return;gPrev=null;gView=save.active;}
+ else if(a==='preset'){const P=PRESETS.find(x=>x.k===el.dataset.k);if(!installParts({...stockParts(save.active),...P.p}))return;save.owned[save.active].tune={...TUNE0,...P.t};gPrev=null;flash(P.name+' build installed');gView=save.active;}
+ else if(a==='treset'){save.owned[save.active].tune={...TUNE0};}
+ else if(a==='bsave'){const e=save.owned[save.active];const n=(prompt('Name this build',PRESETS.find(P=>PARTS.every(x=>e.parts[x.k]===({...stockParts(save.active),...P.p})[x.k]))?.name+' build'||'My build')||'').trim().slice(0,24);if(!n)return;e.builds.push({name:n,parts:{...e.parts},tune:{...e.tune}});flash('Saved '+n);}
+ else if(a==='bload'){const e=save.owned[save.active],B=e.builds[+el.dataset.i];if(!B||!installParts(B.parts))return;e.tune={...TUNE0,...B.tune};flash('Loaded '+B.name);}
+ else if(a==='bdel'){const e=save.owned[save.active];e.builds.splice(+el.dataset.i,1);}
  else if(a==='paint'){const c=+el.dataset.c,e=save.owned[save.active];if(effDef(save.active).paint===c||save.cash<PAINT_COST)return;save.cash-=PAINT_COST;e.spent+=PAINT_COST;e.paint=c;gView=save.active;}
  else if(a==='finish'){const f=FINISHES.find(x=>x.k===el.dataset.k),e=save.owned[save.active];if(!f||e.finish===f.k||save.cash<f.cost)return;save.cash-=f.cost;e.spent+=f.cost;e.finish=f.k;gView=save.active;}
  if(free&&free.def.id===save.active)free.def=Object.assign(effDef(save.active),{});persist();renderGarage();}
-$('garage').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){gTab=t.dataset.tab;if(gTab!=='mine'&&gTab!=='deal')gView=save.active;renderGarage();return;}
+$('garage').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){gTab=t.dataset.tab;if(gTab!=='mine'&&gTab!=='deal')gView=save.active;gPrev=null;renderGarage();return;}
  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;e.stopPropagation();garageAct(b.dataset.act,b);});
+$('garage').addEventListener('input',e=>{const k=e.target.dataset&&e.target.dataset.tune;if(!k)return;save.owned[save.active].tune[k]=+e.target.value/100;
+ if(free&&free.def.id===save.active)free.def=effDef(save.active);persist();$('gname').innerHTML=`${CAR(gView).name}${bars(gView)}`;});
 $('gbtn').onclick=openGarage;
 $('gexit').onclick=()=>{if(state!=='garage')return;garageHide();enterWorld({x:GARAGE.x,z:GARAGE.z+4,h:0});};
 // ================= FLOW =================
@@ -1279,6 +1392,6 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev
  for(const c of scene.children)if(!c.userData.rs){c.userData.rs=1;c.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o!==SKY&&!o.material.transparent)o.receiveShadow=true;});}
  renderer.render(scene,camera);}
 requestAnimationFrame(frame);
-window.__game={surfMul,effDef,RNET,SEGS,fwEdge,ENDS,JOINS,respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
+window.__game={PRESETS,TUNE0,stockParts,buildDef,newEntry,surfMul,effDef,RNET,SEGS,fwEdge,ENDS,JOINS,respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
  get traffic(){return traffic},TRACKS,get pts(){return pts},N,get drag(){return drag},get gates(){return gates},get raceStart(){return raceStart},DRAG,forceFinish(place=1){if(state!=='race')return;if(TRACKS[trackSel].drag){if(player.rt==null)player.rt=.3;dragFinish(performance.now());return;}const now=performance.now(),t=(now-raceStart)/1000;racers.filter(r=>r.ai).slice(0,place-1).forEach((r,i)=>{r.lap=LAPS;r.done=t-1-i;});player.lap=LAPS;player.done=t;finish(now);}};
 </script></body></html>
