@@ -162,3 +162,9 @@
 - New wheels for all cars: lathe tires with rounded sidewalls, plus dish rims with lug detail or 5-slot rims (Stinger, Longshot, Brute, Hammerhead).
 - Haymaker 70, Brute 71, Ridgeback 70 and Coyote 67 keep their boxy bodies and get the new wheels.
 - About 2.4–3.3k triangles per car including wheels. Paint, finishes, garage, AI cars and stats are unchanged.
+
+## 2026-10-28 — am-v23: upgrades really change performance
+- Bug: upgrades added flat amounts (Engine +1.6 m/s per level, about +3.6 mph). A fully upgraded Bandit only went from 116 to 132 mph, which is hard to notice on any normal road. Free-roam physics also kept the old stats until you re-entered the world.
+- Fix: upgrades now scale each car's stock stats by a percentage. Engine +7% top / +5% accel, Transmission +3% / +7%, Tires +5% grip / +2% accel, Weight +1% / +4% / +1.5% grip, all per level. Maxing everything gives +33% top, +54% accel and +19.5% grip. Stats apply immediately after purchase (player car, races, drag).
+- The garage stat bars are rescaled and show mph and accel numbers. Upgrade rows show their effect per level.
+- Headless test (pinned straight, full throttle): Bandit 116→155 mph, Coyote 112→149, Ridgeback 110→146, Thunder 125→167, Stinger 128→170, Brute 134→179, Kestrel 114→152, Haymaker 110→146, Longshot 136→181, Hammerhead 141→188.

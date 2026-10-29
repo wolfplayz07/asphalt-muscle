@@ -82,10 +82,11 @@ const CARS=[
  {id:'hammer',name:'Hammerhead 72',color:0x0f7c7a,stripe:0xffd23f,top:63,acc:26,grip:1.9,shape:'wide',price:72000}];
 const CAR=id=>CARS.find(c=>c.id===id);
 const RACE_CARS=['bandit','thunder','ridge'].map(CAR);
-const UPG=[{k:'eng',name:'Engine',cost:[2000,5000,10000],top:1.6,acc:1.0,grip:0},
- {k:'trn',name:'Transmission',cost:[1500,3500,7500],top:.8,acc:1.2,grip:0},
- {k:'tir',name:'Tires',cost:[1000,2500,5000],top:0,acc:0,grip:.09},
- {k:'wgt',name:'Weight reduction',cost:[1200,3000,6500],top:0,acc:.8,grip:.03}];
+// upgrade effects are fractions of the car's stock stat per level, so every car gains noticeably (max all = +33% top, +54% accel, +19.5% grip)
+const UPG=[{k:'eng',name:'Engine',cost:[2000,5000,10000],top:.07,acc:.05,grip:0},
+ {k:'trn',name:'Transmission',cost:[1500,3500,7500],top:.03,acc:.07,grip:0},
+ {k:'tir',name:'Tires',cost:[1000,2500,5000],top:0,acc:.02,grip:.05},
+ {k:'wgt',name:'Weight reduction',cost:[1200,3000,6500],top:.01,acc:.04,grip:.015}];
 const PAINTS=[0x111111,0xc8102e,0x1f6fd1,0xff7a1a,0x7fc8a9,0x5b2a86,0xe8e8e8,0xf2c200,0x2e7d32,0x8b5a2b];
 const FINISHES=[{k:'gloss',name:'Gloss paint',cost:0},{k:'matte',name:'Matte',cost:1500},{k:'metal',name:'Metallic flake',cost:3000},{k:'glass',name:'Fiberglass',cost:5000},{k:'cacc',name:'Carbon accents',cost:6000},{k:'carbon',name:'Carbon fiber',cost:12000}];
 const PAINT_COST=500,PAYOUT=[5000,3000,1500,500],SAVE_KEY='am_save';
@@ -98,7 +99,7 @@ function loadSave(){let s=null;try{s=JSON.parse(localStorage.getItem(SAVE_KEY)||
  out.active=out.owned[s.active]?s.active:Object.keys(out.owned)[0];return out;}
 let save=loadSave();const persist=()=>localStorage.setItem(SAVE_KEY,JSON.stringify(save));persist();
 function effDef(id){const b=CAR(id),e=save.owned[id]||newEntry();const d={...b};
- for(const u of UPG){const l=e[u.k];d.top+=u.top*l;d.acc+=u.acc*l;d.grip+=u.grip*l;}d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
+ let ft=1,fa=1,fg=1;for(const u of UPG){const l=e[u.k]|0;ft+=u.top*l;fa+=u.acc*l;fg+=u.grip*l;}d.top=b.top*ft;d.acc=b.acc*fa;d.grip=b.grip*fg;d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
 const money=n=>'$'+Math.round(n).toLocaleString('en-US');
 const sellValue=id=>Math.round(.6*(CAR(id).price+save.owned[id].spent));
 // ================= RENDERER =================
@@ -1145,9 +1146,9 @@ function garageHide(){$('garage').style.display='none';$('gname').style.display=
 function openGarage(){if(state!=='free')return;hidePrompt();$('gbtn').style.display='none';free.v=0;free.mesh.visible=false;state='garage';gView=save.active;gTab='mine';
  document.body.classList.remove('free');document.body.classList.add('garage');$('garage').style.display='flex';$('gname').style.display='block';renderGarage();}
 function showCar(id){gView=id;if(gCar)disposeCar(gCar);const d=save.owned[id]?effDef(id):CAR(id);gCar=makeCar(d,save.owned[id]?d.paint:d.color,gScene);gCar.position.y=0;}
-const MAXS={top:72,acc:36,grip:2.6};
+const MAXS=(()=>{const m={top:0,acc:0,grip:0};for(const c of CARS)for(const k in m)m[k]=Math.max(m[k],c[k]);return{top:m.top*1.34,acc:m.acc*1.55,grip:m.grip*1.2};})();
 function bars(id){const b=CAR(id),e=save.owned[id]?effDef(id):b;
- return [['Top speed','top'],['Acceleration','acc'],['Grip','grip']].map(([n,k])=>`<div style="font-size:12px">${n}</div><div class="bar"><i style="width:${e[k]/MAXS[k]*100}%;background:#f5a623"></i><i style="width:${b[k]/MAXS[k]*100}%;background:#d22"></i></div>`).join('');}
+ return [['Top speed','top'],['Acceleration','acc'],['Grip','grip']].map(([n,k])=>`<div style="font-size:12px">${n} <span style="opacity:.75">${k==='top'?Math.round(e[k]*2.237)+' mph':k==='acc'?(e[k]*2.237).toFixed(0)+' mph/s':e[k].toFixed(2)}</span></div><div class="bar"><i style="width:${e[k]/MAXS[k]*100}%;background:#f5a623"></i><i style="width:${b[k]/MAXS[k]*100}%;background:#d22"></i></div>`).join('');}
 function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save.owned[gView]||'')){showCar(gView);gCar.uid=gView+JSON.stringify(save.owned[gView]||'');}
  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.tab===gTab));
  $('gname').innerHTML=`${CAR(gView).name}${gView===save.active?' <span style="font-size:13px;color:#7f7">ACTIVE</span>':''}<div style="font:600 11px sans-serif;opacity:.8">red = base · orange = upgraded</div>${bars(gView)}`;
@@ -1159,7 +1160,7 @@ function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save
  else if(gTab==='deal'){for(const c of CARS){const own=!!save.owned[c.id];h+=`<div class="it${c.id===gView?' sel':''}" data-act="view" data-id="${c.id}"><div><b>${c.name}</b><br><span style="opacity:.7">${money(c.price)}${c.id==='bandit'?' · starter':''}</span></div>
   <button class="btn sm" data-act="buy" data-id="${c.id}" ${own||save.cash<c.price?'disabled':''}>${own?'Owned':'Buy'}</button></div>`;}}
  else if(gTab==='upg'){const id=save.active,e=save.owned[id];h+=`<div style="margin:2px 0 4px">Upgrading: <b>${CAR(id).name}</b></div>`;
-  for(const u of UPG){const l=e[u.k],cost=u.cost[l];h+=`<div class="it"><div><b>${u.name}</b> <span style="color:#f5a623">${'■'.repeat(l)}${'□'.repeat(3-l)}</span><br><span style="opacity:.7">${l>=3?'MAX':'Level '+(l+1)+' · '+money(cost)}</span></div>
+  for(const u of UPG){const l=e[u.k],cost=u.cost[l];h+=`<div class="it"><div><b>${u.name}</b> <span style="color:#f5a623">${'■'.repeat(l)}${'□'.repeat(3-l)}</span><br><span style="opacity:.7">${l>=3?'MAX':'Level '+(l+1)+' · '+money(cost)}</span><br><span style="opacity:.6;font-size:11px">${[u.top&&'+'+Math.round(u.top*100)+'% top',u.acc&&'+'+Math.round(u.acc*100)+'% accel',u.grip&&'+'+(u.grip*100).toFixed(1).replace('.0','')+'% grip'].filter(Boolean).join(', ')} per level</span></div>
    <button class="btn sm" data-act="upg" data-k="${u.k}" ${l>=3||save.cash<cost?'disabled':''}>${l>=3?'Max':'Buy'}</button></div>`;}}
  else{const id=save.active,cur=effDef(id).paint;h+=`<div style="margin:2px 0 4px">Paint <b>${CAR(id).name}</b> · ${money(PAINT_COST)} per coat</div><div>`;
   for(const p of PAINTS)h+=`<span class="sw${p===cur?' on':''}" data-act="paint" data-c="${p}" style="background:#${p.toString(16).padStart(6,'0')}"></span>`;h+='</div>';
@@ -1174,7 +1175,7 @@ function garageAct(a,el){const id=el.dataset.id;
  else if(a==='upg'){const e=save.owned[save.active],u=UPG.find(x=>x.k===el.dataset.k);const l=e[u.k];if(l>=3||save.cash<u.cost[l])return;save.cash-=u.cost[l];e.spent+=u.cost[l];e[u.k]=l+1;gView=save.active;}
  else if(a==='paint'){const c=+el.dataset.c,e=save.owned[save.active];if(effDef(save.active).paint===c||save.cash<PAINT_COST)return;save.cash-=PAINT_COST;e.spent+=PAINT_COST;e.paint=c;gView=save.active;}
  else if(a==='finish'){const f=FINISHES.find(x=>x.k===el.dataset.k),e=save.owned[save.active];if(!f||e.finish===f.k||save.cash<f.cost)return;save.cash-=f.cost;e.spent+=f.cost;e.finish=f.k;gView=save.active;}
- persist();renderGarage();}
+ if(free&&free.def.id===save.active)free.def=Object.assign(effDef(save.active),{});persist();renderGarage();}
 $('garage').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){gTab=t.dataset.tab;if(gTab!=='mine'&&gTab!=='deal')gView=save.active;renderGarage();return;}
  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;e.stopPropagation();garageAct(b.dataset.act,b);});
 $('gbtn').onclick=openGarage;
@@ -1222,6 +1223,6 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev
  for(const c of scene.children)if(!c.userData.rs){c.userData.rs=1;c.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o!==SKY&&!o.material.transparent)o.receiveShadow=true;});}
  renderer.render(scene,camera);}
 requestAnimationFrame(frame);
-window.__game={carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
+window.__game={respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
  get traffic(){return traffic},TRACKS,get pts(){return pts},N,get drag(){return drag},get gates(){return gates},get raceStart(){return raceStart},DRAG,forceFinish(place=1){if(state!=='race')return;if(TRACKS[trackSel].drag){if(player.rt==null)player.rt=.3;dragFinish(performance.now());return;}const now=performance.now(),t=(now-raceStart)/1000;racers.filter(r=>r.ai).slice(0,place-1).forEach((r,i)=>{r.lap=LAPS;r.done=t-1-i;});player.lap=LAPS;player.done=t;finish(now);}};
 </script></body></html>
