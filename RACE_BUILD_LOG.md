@@ -174,3 +174,16 @@
 - Dirt/sand/concrete roads render as single continuous mitred ribbons (with wheel ruts) instead of overlapping straight planes, so there are no kinks or z-fighting overlaps.
 - Coast road split: concrete through the port apron, sand along the beach; minimap, surface physics (sand = loose like dirt) and lane markings updated.
 - Dust Devil Rally track is a smooth closed spline; checkpoints and AI derive from its points so they remain in sync.
+
+## am-v25 — 2026-10-29 — Finished roads: no more dead ends
+Headless audit of every road endpoint (town grid, alleys, port streets, dirt/sand/concrete, interchange roads) found 18 open ends (+4 interchange spurs that already end at a destination lot). Resolved:
+- West connector hw (-560,50) stopped 20 m short of the loop → extended to join it at (-580,50).
+- Town street z=-50 dead-ended mid-block at x=25 → extended to a T-junction with the x=100 avenue.
+- Alleys z=125, z=-125, z=75 (6 ends) stopped mid-block → extended to T into the bounding avenues/streets.
+- Port streets z=-200 / z=-350 stopped short of the coast highway → extended to meet it.
+- Dirt road at (760,420) and the two canyon dirt roads near (-280,-310) lost contact after v24 rounding → joined back with smooth curves, with junction patches over the crossing ruts.
+- Port lane x=-1360: north end → paved cul-de-sac + parking lot; south end → turnaround + container stack.
+- Beach sand road (-1435,600) → sand turnaround + lookout deck.
+- Forest dirt road (-1100,1520) → turnaround + trailhead (sign, kiosk, gravel lot).
+- Desert dirt road (1178,-1080) → turnaround + gas station.
+- Minimap shows the turnarounds; re-audit: 0 unintended dead ends.

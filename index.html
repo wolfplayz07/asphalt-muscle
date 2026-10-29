@@ -508,18 +508,18 @@ function dragFinish(now){if(state!=='race')return;state='done';const p=player,a=
 const BOUND=1760,OB=880,RW=7;// map doubled per side (4x area); OB = original map edge
 // ---- road network: [polyline, half-width, type] ----
 const HW=7,ST=5,AL=3.5,DT=4.5;
-const RNET=[
+const JOINS=[],RIB=t=>t==='dirt'||t==='sand'||t==='conc';const RNET=[
  // highway loop + original town grid
  [[[-150,-100],[150,-100]],HW,'hw'],[[[-150,0],[150,0]],HW,'hw'],[[[-150,100],[150,100]],HW,'hw'],[[[-100,-150],[-100,150]],HW,'hw'],[[[0,-600],[0,150]],HW,'hw'],[[[100,-150],[100,150]],HW,'hw'],
  [[[150,0],[400,30],[600,0],[650,250],[600,500],[300,620],[-200,620],[-480,420]],HW,'hw'],
  [[[-480,420],[-560,250],[-580,50],[-560,-150],[-600,-320],[-450,-450],[-200,-560],[0,-600],[400,-600],[600,-350],[600,0]],HW,'hw'],
- [[[-150,0],[-350,20],[-560,50]],HW,'hw'],[[[0,150],[-50,380],[-200,620]],HW,'hw'],
+ [[[-150,0],[-350,20],[-580,50]],HW,'hw'],[[[0,150],[-50,380],[-200,620]],HW,'hw'],
  // ramps / connectors joining the loop
  [[[150,100],[320,190],[650,250]],HW,'hw'],[[[150,-100],[380,-280],[600,-350]],HW,'hw'],[[[-100,-150],[-230,-330],[-450,-450]],HW,'hw'],
  // town side streets
- [[[-150,50],[150,50]],ST,'st'],[[[-150,-50],[25,-50]],ST,'st'],[[[-50,-150],[-50,150]],ST,'st'],[[[50,0],[50,150]],ST,'st'],[[[150,-150],[150,150]],ST,'st'],[[[-150,-150],[150,-150]],ST,'st'],[[[-150,150],[150,150]],ST,'st'],[[[-150,-150],[-150,150]],ST,'st'],
+ [[[-150,50],[150,50]],ST,'st'],[[[-150,-50],[100,-50]],ST,'st'],[[[-50,-150],[-50,150]],ST,'st'],[[[50,0],[50,150]],ST,'st'],[[[150,-150],[150,150]],ST,'st'],[[[-150,-150],[150,-150]],ST,'st'],[[[-150,150],[150,150]],ST,'st'],[[[-150,-150],[-150,150]],ST,'st'],
  // alleys
- [[[-125,-95],[-125,95]],AL,'al'],[[[-75,125],[75,125]],AL,'al'],[[[125,-95],[125,95]],AL,'al'],[[[-75,-125],[-25,-125]],AL,'al'],[[[25,75],[75,75]],AL,'al'],
+ [[[-125,-95],[-125,95]],AL,'al'],[[[-100,125],[100,125]],AL,'al'],[[[125,-95],[125,95]],AL,'al'],[[[-100,-125],[-50,-125]],AL,'al'],[[[0,75],[100,75]],AL,'al'],
  // country back roads (paved)
  [[[150,150],[260,330],[300,620]],ST,'st'],[[[-150,150],[-300,300],[-480,420]],ST,'st'],
  // dirt shortcuts (countryside + canyon)
@@ -534,7 +534,7 @@ RNET.push(
  [[[-1250,-500],[-1300,300],[-1150,900],[-800,1250]],HW,'hw'],
  [[[300,620],[320,950],[150,1250],[-300,1300],[-800,1250]],HW,'hw'],
  [[[150,1250],[700,1320],[1200,900],[1350,300],[1300,-300]],HW,'hw'],
- [[[-1250,-200],[-1440,-200]],ST,'st'],[[[-1250,-350],[-1440,-350]],ST,'st'],[[[-1360,-90],[-1360,-460]],ST,'st'],
+ [[[-1268.75,-200],[-1440,-200]],ST,'st'],[[[-1259.4,-350],[-1440,-350]],ST,'st'],[[[-1360,-90],[-1360,-460]],ST,'st'],
  [[[1178,-1080],[1550,-1020],[1650,-700],[1560,-380],[1300,-300]],DT,'dirt'],[[[760,420],[1000,520],[1350,300]],DT,'dirt'],
  [[[-300,1300],[-400,1550],[0,1610],[400,1520],[700,1320]],DT,'dirt'],[[[-800,1250],[-1100,1520]],DT,'dirt'],
  [[[-1300,300],[-1435,600]],DT,'dirt'],[[[-1300,300],[-1435,0],[-1435,-900],[-1200,-1100]],DT,'dirt']);
@@ -554,8 +554,17 @@ RNET.push(
   const ty=([x,z])=>inApron(x,z)?'conc':beach(x,z)?'sand':'dirt';let cur=[q[0]],ct=ty(q[0]);
   for(let i=1;i<q.length;i++){const m=[(q[i-1][0]+q[i][0])/2,(q[i-1][1]+q[i][1])/2],tt=ty(m);if(tt!==ct&&cur.length>1){out.push([cur,w,ct]);cur=[q[i-1]];}ct=tt;cur.push(q[i]);}
   out.push([cur,w,ct]);}
- RNET.push(...out);}
-const SOFT=t=>t==='dirt'||t==='sand',RIB=t=>t==='dirt'||t==='sand'||t==='conc';
+ RNET.push(...out);
+ // v25: join loose dirt/sand ends onto the nearest road with a smooth curve (continue straight, then bend in)
+ const nearPt=(x,z,self)=>{let b=null,bd=1e9;for(const r of RNET){if(r===self)continue;const q=r[0];for(let i=0;i<q.length-1;i++){const [ax,az]=q[i],[bx,bz]=q[i+1],dx=bx-ax,dz=bz-az,l=dx*dx+dz*dz||1;let t=Math.max(0,Math.min(1,((x-ax)*dx+(z-az)*dz)/l));const px=ax+dx*t,pz=az+dz*t,d=Math.hypot(x-px,z-pz)-r[1];if(d<bd){bd=d;b=[px,pz,r];}}}return[b,bd];};
+ for(const r of RNET){if(!RIB(r[2]))continue;for(const e of[0,1]){const pl=r[0],p=e?pl[pl.length-1]:pl[0],p2=e?pl[pl.length-2]:pl[1];const [b,bd]=nearPt(p[0],p[1],r);if(!b||bd<2||bd>70)continue;
+  let dx=p[0]-p2[0],dz=p[1]-p2[1];const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;const D=Math.hypot(b[0]-p[0],b[1]-p[1]),c=[p[0]+dx*D*.5,p[1]+dz*D*.5],add=[],n=Math.max(3,Math.ceil(D/10));
+  for(let k=1;k<=n;k++){const t=k/n,u=1-t;add.push([u*u*p[0]+2*u*t*c[0]+t*t*b[0],u*u*p[1]+2*u*t*c[1]+t*t*b[1]]);}
+  if(e)pl.push(...add);else pl.unshift(...add.reverse());JOINS.push([b[0],b[1],r[1],r[2],RIB(b[2][2])]);}}}
+const SOFT=t=>t==='dirt'||t==='sand';
+// v25: roads that end in the open get a turnaround + a small destination
+const ENDS=[[-1360,-90,'parking'],[-1360,-460,'turn'],[-1435,600,'lookout'],[-1100,1520,'trailhead'],[1178,-1080,'gas']].map(([x,z,k])=>{let best=null,bd=1e9;
+ for(const [pl,w,t] of RNET)for(const e of[0,1]){const p=e?pl[pl.length-1]:pl[0],q=e?pl[pl.length-2]:pl[1],d=Math.hypot(p[0]-x,p[1]-z);if(d<bd){bd=d;best={x:p[0],z:p[1],h:Math.atan2(p[0]-q[0],p[1]-q[1]),k,w,t};}}return best;});
 // ---- I-17 elevated freeway: continuous loop around the whole map on concrete pillars, 3 lanes each way, median + side barriers.
 // +side (o>0) carriageway travels with increasing index; ramps sit outside the deck edge: foot on the ground at i0, climb over L pts, merge zone M pts. ----
 const FH=7.6,FDW=13.5,FRW=6,FGRID=40;
@@ -752,6 +761,13 @@ function buildFreeway(){const CK=60,mat=detailize(new THREE.MeshLambertMaterial(
   else if(D.kind==='racepark'){for(let t=0;t<4;t++)B(40,1.4,3,0,44+t*2.6,t*1.4,0x95a5a6,t===0);B(40,.4,12,0,48,6.2,0xc0392b,false);B(4,12,4,26,40,0,0xdddddd);B(6,2.4,6,26,40,12,0x2c3e50,false);
    for(let a=-20;a<=20;a+=8)B(1,.06,8,a,22,.07,(a/8)%2?0xffffff:0x111111,false);}
   else{B(16,46,16,-16,48,0,0x5d7ea8);B(14,32,14,4,52,0,0x8e9aa6);B(12,58,12,22,46,0,0x34495e);B(30,.4,12,0,26,.1,0xbdb7ab,false);}}
+ for(const E of ENDS){const h=E.h,cs=Math.cos(h),sn=Math.sin(h),ox=E.x+sn*E.w*1.4,oz=E.z+cs*E.w*1.4;const L=(u,v)=>[ox+sn*v+cs*u,oz+cs*v-sn*u];
+  const B=(w,ht,d,u,v,y,c,solid=true)=>{const [x,z]=L(u,v);wb(w,ht,d,x,(y||0)+ht/2,z,h,c,solid);};const lot=E.t==='st'?.1:.095;
+  if(E.k==='parking'){B(30,.05,22,22,4,lot,0x3b3b3e,false);for(let a=-10;a<=10;a+=5)B(.3,.02,5,22+a,0,lot+.05,0xffffff,false);B(.4,4,.4,22,-8,0,0x888888);}
+  else if(E.k==='turn'){B(10,3.2,4,-20,4,0,0x7f8c8d);B(10,3.2,4,-20,9,0,0xd35400);B(3,2.6,3,-20,15,0,0x2471a3);}
+  else if(E.k==='lookout'){B(8,.4,8,0,20,.6,0x8b6b4a,false);for(const a of[-3.8,3.8])B(.25,1.1,8,a,20,.8,0x6b4a2b,false);B(8,1.1,.25,0,23.9,.8,0x6b4a2b,false);for(const a of[-3,3])B(.5,.9,.5,a,20,0,0x6b4a2b);B(.3,1.4,.3,0,22,1,0x555555,false);}
+  else if(E.k==='trailhead'){B(16,.05,12,16,0,.09,0x8a6a45,false);B(.4,2.4,.4,-9,6,0,0x6b4a2b);B(.4,2.4,.4,-6,6,0,0x6b4a2b);B(4,1.6,.2,-7.5,6,1.6,0x2f6b3a,false);B(3,2.6,2.4,10,14,0,0x6b4a2b);}
+  else if(E.k==='gas'){B(26,.06,20,20,4,.1,0x3b3b3e,false);B(16,.6,9,20,4,5,0xeeeeee,false);B(16.4,.5,9.4,20,4,4.6,0xc0392b,false);for(const a of[-5,5]){B(.5,4.6,.5,20+a,4,0,0xdddddd);B(1,1.6,.6,20+a,4,0,0x2e86c1);}B(12,4,8,20,16,0,0xd8d2c4);B(.5,9,.5,6,-6,0,0x888888);B(3,2.4,.4,6,-6,9,0xc0392b,false);}}
  const em=new THREE.Mesh(mergeParts(parts),VC);em.castShadow=true;fwg.add(em);
  // signs: one canvas atlas, rows = messages
  const TX=[['I-17 LOOP','Desert · Dry Lake'],['NEXT EXIT','Port · Coast  1 MI'],['I-17 NORTH','Pine Forest'],['SPEED LIMIT','75']];
@@ -958,6 +974,10 @@ function buildNature(COL,KEEP){let rs=4242;const rnd=()=>(rs=(rs*16807)%21474836
    const e=(a,b)=>{const dx=a[0]-b[0],dz=a[1]-b[1],l=Math.hypot(dx,dz)||1;return[a[0]+dx/l*w*.6,a[1]+dz/l*w*.6];};const q=[e(pl[0],pl[1]),...pl.slice(1,-1),e(pl[pl.length-1],pl[pl.length-2])];
    ribbon(q,0,w,SURF[t][1],SURF[t][0]);if(t==='dirt'||t==='sand')for(const sd of[-1,1])ribbon(q,sd*1.6,.45,SURF[t][1]+.004,t==='sand'?0xb09a6c:0x6e5234);
    if(t==='conc')for(let i=2;i<q.length-1;i+=2){const [ax,az]=q[i],[bx,bz]=q[i+1],dx=bx-ax,dz=bz-az,l=Math.hypot(dx,dz)||1;strip(ax-dz/l*w,az+dx/l*w,ax+dz/l*w,az-dx/l*w,.12,.09,0x7d7d78);}}
+  const disc=(x,z,r,y,c)=>{const g=new THREE.CircleGeometry(r,22);g.rotateX(-Math.PI/2);parts.push({g,m:new THREE.Matrix4().makeTranslation(x,y,z),c});};
+  for(const E of ENDS){const k=Math.floor(E.x/CHS)+','+Math.floor(E.z/CHS);parts=CH[k]||(CH[k]=[]);const S=SURF[E.t]||SURF.st,cx=E.x+Math.sin(E.h)*E.w*1.4,cz=E.z+Math.cos(E.h)*E.w*1.4;
+   disc(cx,cz,E.w*2.8,S[1]+.006,S[0]);if(E.t==='st')disc(cx,cz,E.w*1.1,S[1]+.008,0x5f7d3a);}// paved bulb with a grass island
+  for(const [x,z,w,t,rib] of JOINS){if(!rib)continue;const k=Math.floor(x/CHS)+','+Math.floor(z/CHS);parts=CH[k]||(CH[k]=[]);disc(x,z,w*1.9,SURF[t][1]+.006,SURF[t][0]);}// junction patch hides crossing ruts
   parts=mainParts;}
  // crosswalks at town junctions
  const inTown=(x,z)=>Math.abs(x)<=160&&Math.abs(z)<=160;
@@ -1127,7 +1147,8 @@ const mbg=document.createElement('canvas');mbg.width=mbg.height=MS*2;{const c=mb
  const STY={sand:['#d9c48f',.9],conc:['#b0b0aa',.9],dirt:['#8a5a2a',.9],al:['#bbb',.4],st:['#d6d6d6',.8],hw:['#f2f2f2',1.4]};
  for(const t of['dirt','sand','conc','al','st','hw']){c.strokeStyle=STY[t][0];c.lineWidth=STY[t][1];if(t==='dirt'||t==='sand')c.setLineDash([1.5,1]);else c.setLineDash([]);
   for(const sg of SEGS)if(sg[5]===t){c.beginPath();c.moveTo(mx(sg[0]),mz(sg[1]));c.lineTo(mx(sg[2]),mz(sg[3]));c.stroke();}}
- c.setLineDash([]);for(const [w,cl] of[[2.6,'#cfd8e6'],[.5,'#5d7a99']]){c.strokeStyle=cl;c.lineWidth=w;c.beginPath();FW.forEach((p,i)=>{const x=mx(p.x),z=mz(p.z);i?c.lineTo(x,z):c.moveTo(x,z);});c.closePath();c.stroke();}
+ c.setLineDash([]);for(const E of ENDS){c.fillStyle=E.t==='st'?'#d6d6d6':E.t==='sand'?'#d9c48f':'#8a5a2a';c.beginPath();c.arc(mx(E.x),mz(E.z),1.6,0,7);c.fill();}
+ for(const [w,cl] of[[2.6,'#cfd8e6'],[.5,'#5d7a99']]){c.strokeStyle=cl;c.lineWidth=w;c.beginPath();FW.forEach((p,i)=>{const x=mx(p.x),z=mz(p.z);i?c.lineTo(x,z):c.moveTo(x,z);});c.closePath();c.stroke();}
  c.strokeStyle='#cfd8e6';c.lineWidth=1.2;for(const r of RAMPS){c.beginPath();for(let k=0;k<=r.L+r.M;k+=4){const [x,z]=fwAt(rIdx(r,k),r.s*(FDW+FRW/2));k?c.lineTo(mx(x),mz(z)):c.moveTo(mx(x),mz(z));}c.stroke();}
  c.font='bold 6px sans-serif';c.textAlign='center';for(const X of XCH){const D=X.dest,px=mx(D.x),pz=mz(D.z);c.fillStyle='#ffd23f';c.beginPath();c.arc(px,pz,2.2,0,7);c.fill();c.strokeStyle='rgba(0,0,0,.75)';c.lineWidth=2;const t=D.name.replace(/ (Truck Stop|Boardwalk|Campground|Race Park|Speedway|Quarry|Plaza|Lodge|Diner)$/,'');c.strokeText(t,px,pz-4);c.fillStyle='#fff';c.fillText(t,px,pz-4);}
  c.strokeStyle='#f70';c.lineWidth=1;c.strokeRect(mx(-BOUND),mz(-BOUND),2*BOUND*mscale,2*BOUND*mscale);}
@@ -1253,6 +1274,6 @@ function frame(now){requestAnimationFrame(frame);const dt=Math.min(.05,(now-prev
  for(const c of scene.children)if(!c.userData.rs){c.userData.rs=1;c.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh&&o!==SKY&&!o.material.transparent)o.receiveShadow=true;});}
  renderer.render(scene,camera);}
 requestAnimationFrame(frame);
-window.__game={respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
+window.__game={RNET,SEGS,fwEdge,ENDS,JOINS,respawn:()=>enterWorld(),carGeo,CARS,THREE,makeCar,fw:{XCH,FW,RAMPS,fwSurf,fwNear,FH},get racers(){return racers},get state(){return state},SEGS,roadInfo,get bld(){return openWorld.userData.bld},get stats(){return openWorld.userData.stats},setSteerMode:m=>setSteer(m),get free(){return free},get save(){return save},persist,MARKERS,GARAGE,renderer,CARS,get prompt(){return $('prompt').style.display},BOUND,OB,REGIONS,get openWorld(){return openWorld},regionAt,get mini(){return{MS,mscale,map:[mx(-BOUND),mx(BOUND)]}},openGarage,
  get traffic(){return traffic},TRACKS,get pts(){return pts},N,get drag(){return drag},get gates(){return gates},get raceStart(){return raceStart},DRAG,forceFinish(place=1){if(state!=='race')return;if(TRACKS[trackSel].drag){if(player.rt==null)player.rt=.3;dragFinish(performance.now());return;}const now=performance.now(),t=(now-raceStart)/1000;racers.filter(r=>r.ai).slice(0,place-1).forEach((r,i)=>{r.lap=LAPS;r.done=t-1-i;});player.lap=LAPS;player.done=t;finish(now);}};
 </script></body></html>
