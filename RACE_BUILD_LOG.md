@@ -210,3 +210,12 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - Confirmed and made explicit: all 13 cars (muscle, boxy, compacts) can install every part category (engine swaps, turbo/twin/supercharger, FWD/RWD/AWD swap, all tires, suspensions, aero, lights) and every preset (Street, Rally, Drag, Drift, Track). Nothing is locked.
 - New per-car Mod potential (shown as stars + % in the garage, dealership and parts screen): tuner compacts 118%, light muscle 100–106%, heavy/boxy muscle 85–90%. It scales how much each part adds, so all builds stay available but some cars gain more.
 - Verified that presets give clearly different handling on every car: Rally keeps the dirt speed close to the road speed, Drag has the highest top speed and launch but the lowest grip, Drift has maximum rear slide, and Track has the highest road grip.
+
+## 2026-10-30 — am-v30 ◆ Milestone: procedural engine sounds per build
+- All audio is generated live with Web Audio. No samples or recorded files are used.
+- Each car family has its own voice: V8 muscle cars have a deep, lumpy idle that smooths out at high RPM; the compacts have a higher 4/6-cylinder rasp; the boxy trucks (Haymaker, Brute) have a heavier, low-revving drone. Engine swaps change the voice too (V8, inline-6, boxer-4, high-revving rotary).
+- RPM comes from a simulated 5-speed gearbox. Pitch and volume follow RPM and throttle, with a short dip on each upshift. Revving at a standstill is possible.
+- Parts change the sound. Exhaust upgrades make the car louder and brighter. A turbo adds spool and a blow-off whistle on lift and on shifts; twin turbos spool higher. A supercharger adds a whine that follows RPM. Race cams or a race block raise the redline by 1,400 RPM (Drag and Track builds). Drift and Rally parts or a race exhaust add crackle on lift-off.
+- Tire squeal plays during slides on pavement.
+- A sound button with a volume slider and Mute sits next to the cash display. The setting is saved between sessions. Audio starts on the first tap (iOS Safari rule) and pauses when the app is in the background.
+- To keep the CPU load low, one fixed set of oscillators is updated about 30 times a second and the noise buffer is shared.
