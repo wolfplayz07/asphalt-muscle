@@ -83,7 +83,7 @@ const $=id=>document.getElementById(id);
 const LAPS=3,W=11,N=600;
 // ================= CARS / SAVE =================
 const CARS=[
- {id:'bandit',name:'Bandit 68',color:0x111111,stripe:0xd4a017,top:52,acc:21,grip:1.9,shape:'fast',price:12000},
+ {id:'bandit',name:'Bandit 68',color:0x111111,stripe:0xd4a017,top:52,acc:21,grip:1.9,lt:1.16,shape:'fast',price:12000},
  {id:'coyote',name:'Coyote 67',color:0x7fc8a9,stripe:0xffffff,top:50,acc:23,grip:2.0,shape:'compact',price:16000},
  {id:'ridge',name:'Ridgeback 70',color:0x1f6fd1,stripe:0xffffff,top:49,acc:25,grip:2.15,shape:'notch',price:24000},
  {id:'thunder',name:'Thunder SS',color:0xc8102e,stripe:0xffffff,top:56,acc:18,grip:1.65,shape:'long',price:32000},
@@ -180,8 +180,8 @@ function buildDef(id,parts,tune){const b=CAR(id),d={...b},P={...stockParts(id),.
 // traction: 4.5 m/s2 base x launch (tires/diff/AWD), grip, body weight; power: acc rating, constant power above 22 m/s; ~.2 s torque dip at each shift
 const HEAVY={hauler:1.32,brute:1.25,long:1.06,coupe:1.06,sedan4:1.08,lnose:.93,zc:.95},GSHIFT=[.2,.38,.56,.76];
 function accelAt(d,v,sm){const h=HEAVY[d.shape]||1,va=Math.abs(v),top=d.top*(sm?sm.top:1);
- const ap=d.acc*(sm?sm.acc:1)*.36/h*Math.min(1,22/Math.max(va,.1));
- const at=4.5*(1+(Math.max(1,d.launch||1)-1)*2)*Math.pow(d.grip*(sm?sm.grip:1)/1.9,.4)*(d.drive==='awd'?1.1:d.drive==='fwd'?.92:1)/Math.sqrt(h);
+ const ap=d.acc*(sm?sm.acc:1)*.36*(d.pw||1)/h*Math.min(1,22/Math.max(va,.1));
+ const at=4.5*(d.lt||1)*(1+(Math.max(1,d.launch||1)-1)*2)*Math.pow(d.grip*(sm?sm.grip:1)/1.9,.4)*(d.drive==='awd'?1.1:d.drive==='fwd'?.92:1)/Math.sqrt(h);
  const u=va/top;let sd=1;for(const g of GSHIFT)if(u>g&&u<g+.015)sd=.45;return Math.min(ap,at)*Math.max(0,1-u*u*u*u)*sd;}
 function t60Sim(d){let v=0,t=0;const dt=1/60;while(v<26.82&&t<30){v+=accelAt(d,v)*dt;t+=dt;}return t;}
 function statsOf(d){const so=surfMul(d,'dirt'),cl=v=>Math.max(0,Math.min(10,v));
