@@ -182,7 +182,9 @@ const HEAVY={hauler:1.32,brute:1.25,long:1.06,coupe:1.06,sedan4:1.08,lnose:.93,z
 function accelAt(d,v,sm){const h=HEAVY[d.shape]||1,va=Math.abs(v),top=d.top*(sm?sm.top:1);
  const ap=d.acc*(sm?sm.acc:1)*.36*(d.pw||1)/h*Math.min(1,22/Math.max(va,.1));
  const at=4.5*(d.lt||1)*(1+(Math.max(1,d.launch||1)-1)*2)*Math.pow(d.grip*(sm?sm.grip:1)/1.9,.4)*(d.drive==='awd'?1.1:d.drive==='fwd'?.92:1)/Math.sqrt(h);
- const u=va/top;let sd=1;for(const g of GSHIFT)if(u>g&&u<g+.015)sd=.45;return Math.min(ap,at)*Math.max(0,1-u*u*u*u)*sd;}
+ const u=va/top;let sd=1;for(const g of GSHIFT)if(u>g&&u<g+.015)sd=.45;return Math.min(ACAP,Math.min(ap,at)*(1+LBOOST*Math.max(0,1-va/30)))*Math.max(0,1-u*u*u*u)*sd;}
+// v36 startup boost: the same extra launch/low-speed pull for every car, fading out by ~67 mph (top speeds unchanged). ACAP keeps fully built cars >= ~2.3 s.
+const LBOOST=.15,ACAP=12;
 function t60Sim(d){let v=0,t=0;const dt=1/60;while(v<26.82&&t<30){v+=accelAt(d,v)*dt;t+=dt;}return t;}
 function statsOf(d){const so=surfMul(d,'dirt'),cl=v=>Math.max(0,Math.min(10,v));
  const s={speed:cl(d.top*2.237/20),hand:cl(d.grip*3.4*(1-.25*d.drift)),accel:cl(d.acc/4),launch:cl(d.acc*d.launch/4.4),brake:cl(5*d.brake),off:cl(d.top*so.top*2.237/16),drift:cl(d.drift*10)};
