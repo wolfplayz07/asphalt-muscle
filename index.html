@@ -109,6 +109,10 @@ const PARTS=[
  {k:'front',g:'Aero',name:'Front aero',o:[['none','None','Stock',0,{}],['split','Race splitter','Race',1500,{grip:.03,vis:'split'}]]},
  {k:'rear',g:'Aero',name:'Rear aero',o:[['none','None','Stock',0,{}],['spoiler','Ducktail spoiler','Street',1200,{grip:.03,top:-.005,vis:'spoiler'}],['wing','Race wing','Race',4000,{grip:.07,top:-.02,vis:'wing'}]]},
  {k:'lights',g:'Aero',name:'Roof lights',o:[['none','None','Stock',0,{}],['pod','Rally light pod','Rally',600,{vis:'pod'}]]}];
+// mod potential: every car takes every part & preset; tuner compacts get more out of parts, heavy/boxy muscle a little less
+const MODPOT={sedan4:1.18,lnose:1.18,zc:1.18,compact:1.06,pony:1.06,fast:1,notch:1,wedge:1,long:.9,coupe:.9,brute:.88,wide:.88,hauler:.85};
+const modPot=id=>MODPOT[(CAR(id)||{}).shape]||1;
+const modTag=id=>{const m=modPot(id),n=m>=1.15?5:m>=1.05?4:m>=1?3:2;return`<span style="font-size:11px;opacity:.85" title="Mod potential">Mod potential <b style="color:#f5a623">${'★'.repeat(n)}${'☆'.repeat(5-n)}</b> ${Math.round(m*100)}%</span>`;};
 const PART=(k,o)=>{const c=PARTS.find(p=>p.k===k);return c&&c.o.find(x=>x[0]===o);};
 const stockParts=id=>{const c=CAR(id)||{},o={};for(const p of PARTS)o[p.k]=p.o[0][0];if(c.ind)o.ind=c.ind;return o;};
 const TUNE0={tp:.5,fd:.5,cam:.5,spr:.5,arb:.5,dif:.5,dn:.5};
@@ -148,7 +152,7 @@ let save=loadSave();const persist=()=>localStorage.setItem(SAVE_KEY,JSON.stringi
 const SURFP={paved:{top:1,acc:1,grip:1},dirt:{top:.82,acc:.85,grip:.88},off:{top:.5,acc:.62,grip:.8},canyon:{top:.43,acc:.58,grip:.8}};
 function surfMul(d,type){const p=SURFP[type]||SURFP.paved,k=1-(d.off||0),f=x=>Math.max(.3,1-(1-x)*k);return{top:f(p.top),acc:f(p.acc),grip:f(p.grip)};}
 function buildDef(id,parts,tune){const b=CAR(id),d={...b},P={...stockParts(id),...parts},t={...TUNE0,...tune},F={top:0,acc:0,grip:0,off:0,launch:0,brake:0,drift:0,ride:0},vis={};
- for(const c of PARTS){const o=PART(c.k,P[c.k])||c.o[0];for(const k in o[4])if(k==='vis')vis[o[4].vis]=1;else F[k]+=o[4][k];}
+ for(const c of PARTS){const o=PART(c.k,P[c.k])||c.o[0];for(const k in o[4])if(k==='vis')vis[o[4].vis]=1;else{const v=o[4][k];F[k]+=v>0&&k!=='ride'?v*modPot(id):v;}}
  const dr=P.drive==='stock'?(b.drive||'rwd'):P.drive;d.drive=dr;
  if(dr==='awd'){F.launch+=.22;F.off+=.25;F.drift-=.3;F.top-=.02;F.grip+=.04;}else if(dr==='fwd'){F.launch-=.1;F.drift-=.4;F.off+=.08;}else{F.drift+=.12;}
  // tuning: small, real trade-offs
@@ -1295,7 +1299,7 @@ const piTag=d=>{const c=classOf(d.pi);return`<span class="pi"><i style="backgrou
 function bars(id,pv){const e=save.owned[id]?effDef(id):buildDef(id,{},{}),p=pv||e,a=e.stats,b=p.stats;
  const row=(n,k,txt)=>{const x=a[k]*10,y=b[k]*10,lo=Math.min(x,y),hi=Math.max(x,y);return`<div style="font-size:12px;display:flex;justify-content:space-between"><span>${n}</span><span style="opacity:.8">${txt}</span></div><div class="bar"><i style="width:${hi}%;background:${y>x?'#3fd17a':'#e33'}"></i><i style="width:${lo}%;background:#f5a623"></i></div>`;};
  const v=(x,y,f)=>f(x)===f(y)?f(x):f(x)+' → <b style="color:'+(y>x?'#7f7':'#f77')+'">'+f(y)+'</b>';
- return`<div style="margin:2px 0">${piTag(e)}${pv&&pv.pi!==e.pi?' → '+piTag(pv):''} <span style="font-size:11px;opacity:.75">${e.drive.toUpperCase()}</span></div>`+
+ return`<div style="margin:2px 0">${piTag(e)}${pv&&pv.pi!==e.pi?' → '+piTag(pv):''} <span style="font-size:11px;opacity:.75">${e.drive.toUpperCase()}</span><br>${modTag(id)}</div>`+
   row('Speed','speed',v(e.top,p.top,x=>Math.round(x*2.237)+' mph'))+row('Handling','hand',v(a.hand,b.hand,x=>x.toFixed(1)))+row('Acceleration','accel',v(a.t60,b.t60,x=>'0-60 '+x.toFixed(2)+'s').replace(/#7f7|#f77/,m=>b.t60<a.t60?'#7f7':'#f77'))+
   row('Launch','launch',v(a.launch,b.launch,x=>x.toFixed(1)))+row('Braking','brake',v(a.brake,b.brake,x=>x.toFixed(1)))+row('Offroad','off',v(e.top*surfMul(e,'dirt').top,p.top*surfMul(p,'dirt').top,x=>Math.round(x*2.237)+' mph dirt'))+row('Drift','drift',v(a.drift,b.drift,x=>x.toFixed(1)));}
 function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save.owned[gView]||'')){showCar(gView);gCar.uid=gView+JSON.stringify(save.owned[gView]||'');}
@@ -1306,9 +1310,9 @@ function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save
   for(const id of ids){const act=id===save.active;h+=`<div class="it${id===gView?' sel':''}" data-act="view" data-id="${id}"><div><b>${CAR(id).name}</b>${act?' <span style="color:#7f7">ACTIVE</span>':''}<br><span style="opacity:.7">Sell value ${money(sellValue(id))}</span></div><div>
    <button class="btn sm" data-act="use" data-id="${id}" ${act?'disabled':''}>${act?'Driving':'Drive'}</button><button class="btn sm" style="background:#555" data-act="sell" data-id="${id}" ${act||only?'disabled':''}>Sell</button></div></div>`;}
   h+=`<div style="opacity:.6;font-size:11px">Selling returns 60% of price + upgrades. You can't sell your active or last car.</div>`;}
- else if(gTab==='deal'){for(const c of CARS){const own=!!save.owned[c.id];h+=`<div class="it${c.id===gView?' sel':''}" data-act="view" data-id="${c.id}"><div><b>${c.name}</b><br><span style="opacity:.7">${money(c.price)}${c.id==='bandit'?' · starter':''}</span></div>
+ else if(gTab==='deal'){for(const c of CARS){const own=!!save.owned[c.id];h+=`<div class="it${c.id===gView?' sel':''}" data-act="view" data-id="${c.id}"><div><b>${c.name}</b><br><span style="opacity:.7">${money(c.price)}${c.id==='bandit'?' · starter':''}<br>${modTag(c.id)}</span></div>
   <button class="btn sm" data-act="buy" data-id="${c.id}" ${own||save.cash<c.price?'disabled':''}>${own?'Owned':'Buy'}</button></div>`;}}
- else if(gTab==='upg'){const id=save.active,e=save.owned[id],cur=effDef(id);h+=`<div style="margin:2px 0 4px">Building: <b>${CAR(id).name}</b> ${piTag(cur)} · tap a part to preview</div><div class="cat">Build presets</div><div class="pg">`;
+ else if(gTab==='upg'){const id=save.active,e=save.owned[id],cur=effDef(id);h+=`<div style="margin:2px 0 4px">Building: <b>${CAR(id).name}</b> ${piTag(cur)} · ${modTag(id)}<br><span style="font-size:11px;opacity:.7">Every car can take every part and build type. Mod potential sets how much each part adds.</span></div><div class="cat">Build presets</div><div class="pg">`;
   for(const P of PRESETS){const all={...stockParts(id),...P.p},c=partsCost(id,all),d=buildDef(id,all,{...TUNE0,...P.t}),on=PARTS.every(x=>e.parts[x.k]===all[x.k]);
    h+=`<div class="pt${on?' on':''}"><b style="color:${P.col}">${P.name}</b> ${piTag(d)}<br>${Math.round(d.top*2.237)} mph · dirt ${Math.round(d.top*surfMul(d,'dirt').top*2.237)}<br><button class="btn sm" style="margin-top:3px;width:100%" data-act="preset" data-k="${P.k}" ${on||save.cash<c?'disabled':''}>${on?'Installed':c?'Buy '+money(c):'Install (owned)'}</button></div>`;}
   h+='</div>';let grp='';

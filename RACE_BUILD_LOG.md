@@ -205,3 +205,8 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - New cars: Gale 4R (AWD turbo sedan, $26k), Tempest T6 (long-nose turbo coupe, $38k), Ronin 33 (GT coupe, $34k). ~2.6–2.9k tris.
 - Race prompts show a class limit (Ridge B, Canyon A, Highway S1, Drag open, Rally A).
 - Old saves migrate: engine/trans/tire/weight levels become the matching owned parts.
+
+## 2026-10-30 — am-v28 ◆ Milestone: every car can take every build
+- Confirmed and made explicit: all 13 cars (muscle, boxy, compacts) can install every part category (engine swaps, turbo/twin/supercharger, FWD/RWD/AWD swap, all tires, suspensions, aero, lights) and every preset (Street, Rally, Drag, Drift, Track). Nothing is locked.
+- New per-car Mod potential (shown as stars + % in the garage, dealership and parts screen): tuner compacts 118%, light muscle 100–106%, heavy/boxy muscle 85–90%. It scales how much each part adds, so all builds stay available but some cars gain more.
+- Verified that presets give clearly different handling on every car: Rally keeps the dirt speed close to the road speed, Drag has the highest top speed and launch but the lowest grip, Drift has maximum rear slide, and Track has the highest road grip.
