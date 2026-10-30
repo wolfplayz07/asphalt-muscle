@@ -44,6 +44,7 @@ body.free #steerT,body.racing #steerT{display:block}
 #steerSet{margin:6px 0 4px;display:flex;align-items:center;gap:4px;font-weight:700}.opt{background:#2a3140}.opt.on{background:#d22}
 #notice{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 100px);left:50%;transform:translateX(-50%);background:rgba(10,12,18,.92);padding:8px 14px;border-radius:10px;font:600 14px sans-serif;z-index:10;display:none;text-align:center}
 #garage{position:fixed;top:0;bottom:0;right:0;width:56%;background:rgba(14,17,24,.94);z-index:6;display:none;flex-direction:column;padding:calc(env(safe-area-inset-top) + 8px) calc(env(safe-area-inset-right) + 10px) calc(env(safe-area-inset-bottom) + 8px) 10px;box-sizing:border-box;font-size:13px}
+#daily{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:9;background:rgba(0,0,0,.5)}#daily .dbox{background:rgba(10,12,18,.95);border-radius:14px;padding:10px 14px;width:min(560px,94vw);max-height:92vh;overflow:auto;font-size:14px}.dch{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0;padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.07)}.dch>div:first-child{flex:1 1 220px}.dch.dn{background:rgba(40,160,80,.18)}.dbar{flex:1 1 100%;height:8px;border-radius:4px;background:rgba(255,255,255,.15);overflow:hidden;order:3}.dbar i{display:block;height:100%;background:linear-gradient(90deg,#fc3,#7f7)}.dtop{margin-bottom:4px}#dbtn{position:fixed;z-index:5;top:calc(env(safe-area-inset-top) + 146px);left:calc(env(safe-area-inset-left) + 12px);display:none;background:#a72;font-size:14px;padding:6px 10px}body.free #dbtn{display:block}
 #gtop{display:flex;align-items:center;justify-content:space-between}#gcash{font:800 18px ui-monospace,Menlo,monospace;color:#7f7}
 #tabs{display:flex;gap:4px;margin:6px 0}.tab{flex:1;padding:6px 2px;border-radius:8px;border:0;background:#2a3140;color:#fff;font-weight:700;font-size:13px}.tab.on{background:#d22}
 #gbody{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
@@ -72,9 +73,9 @@ body.free #steerT,body.racing #steerT{display:block}
 <div style="opacity:.6;font-size:11px;margin-top:4px">Only nicknames are shared. The host picks races at markers; empty grid slots are AI.</div></div></div><div id="netb"></div>
 <div id="prompt"><div id="ptxt"></div><div id="pcls"></div><button class="btn" id="yes">Yes</button><button class="btn" id="no" style="background:#444">No</button></div>
 <button class="btn" id="gbtn">Enter Garage</button>
-<div id="garage"><div id="gtop"><b style="font-size:18px">GARAGE</b><span id="gcash"></span><button class="btn sm" id="gexit" style="background:#2a7">Exit ▶</button></div>
+<div id="garage"><div id="gtop"><b style="font-size:18px">GARAGE</b><span id="gcash"></span><button class="btn sm" id="gdaily" style="background:#a72">★ Daily</button><button class="btn sm" id="gexit" style="background:#2a7">Exit ▶</button></div>
 <div id="tabs"><button class="tab on" data-tab="mine">My Cars</button><button class="tab" data-tab="deal">Dealership</button><button class="tab" data-tab="upg">Parts</button><button class="tab" data-tab="tune">Tune</button><button class="tab" data-tab="paint">Paint</button></div><div id="gbody"></div></div>
-<div id="gname"></div><button id="steerT"></button><div id="notice"></div>
+<button class="btn" id="dbtn">★ Daily</button><div id="daily"><div class="dbox"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:18px">DAILY CHALLENGES</b><button class="btn sm" id="dclose" style="background:#555">Close</button></div><div id="dlist"></div></div></div><div id="gname"></div><button id="steerT"></button><div id="notice"></div>
 <div id="rot">↻ Rotate your device to landscape</div>
 <script type="module">
 import * as THREE from 'three';
@@ -520,6 +521,7 @@ function crossLine(r,ps,now){
 function finish(now){state='done';
  const rows=[...racers].sort((a,b)=>progress(b)-progress(a));const place=rows.indexOf(player)+1;
  const PAY=TRACKS[trackSel].pay||PAYOUT,SPR=!!TRACKS[trackSel].sprint;lastPayout=PAY[place-1]||0;save.cash+=lastPayout;persist();
+ if(player.done)try{DAILY.race(TRACKS[trackSel].id,raceCls||'OPEN',player.done,place,player.def);}catch(e){}
  const rf=()=>{let pv=0;
   $('fintab').innerHTML=rows.map((r,i)=>{let t;if(r.done){pv=r.done;t=fmt(r.done);}else{const left=TRACKS[trackSel].rally?(r.cp>=gates.length?0:N-((r.seg>N*.9&&r.cp<2)?r.seg-N:r.seg)):SPR?N-SPF-r.seg:(LAPS-r.lap)*N-((r.seg)%N);pv=Math.max(pv+0.5,(now-raceStart)/1000+left*(pts[0].distanceTo(pts[1]))/Math.max(10,r.def.top*r.skill*.8));t='~'+fmt(pv);}
    return `<tr style="${r.me||(r.me==null&&!r.ai)?'color:#ff5':r.key&&!r.key.startsWith('ai')?'color:#8cf':''}"><td>${ord(i+1)}</td><td>${r.name}</td><td>${r.def.name}</td><td>${t}</td><td style="color:#7f7">+${money(PAY[i]||0)}</td></tr>`}).join('');
@@ -606,7 +608,7 @@ function dragFinish(now){if(state!=='race')return;state='done';const p=player,a=
  const est=r=>{if(r.et!=null)return;const left=Math.max(0,QM-r.z),v=Math.max(r.v,10);const t=left/((v+r.def.top)/2);r.et=(r.t0?(now-r.t0)/1000:0)+t;r.trap=Math.min(r.def.top,v+r.def.acc*t*.5)*2.237;r.done=r.rt+r.et;r.est=true;};
  est(p);est(a);const pt=(p.rt||0)+p.et,at=a.rt+a.et;const win=!p.foul&&pt<at;
  const bonus=p.foul?0:drag.bonus;lastPayout=(p.foul?DRAG.foul:win?DRAG.win:DRAG.lose)+bonus;save.cash+=lastPayout;persist();
- if(!p.foul&&!p.est){const b=+localStorage.getItem('am_best_t4')||0;if(!b||p.et<b)localStorage.setItem('am_best_t4',p.et);}
+ if(!p.foul&&!p.est){try{DAILY.drag(p.et);}catch(e){}const b=+localStorage.getItem('am_best_t4')||0;if(!b||p.et<b)localStorage.setItem('am_best_t4',p.et);}
  const row=(r,pay)=>`<tr style="${r.me||(r.me==null&&!r.ai)?'color:#ff5':r.key&&!r.key.startsWith('ai')?'color:#8cf':''}"><td>${r.ai?'Right':'Left'}</td><td>${r.name}</td><td>${r.def.name}</td><td>RT ${r.foul?'<span style="color:#f44">RED</span>':(r.rt??0).toFixed(3)}</td><td>ET ${r.est?'~':''}${r.et.toFixed(3)}s</td><td>Trap ${r.trap.toFixed(1)} mph</td><td style="color:#7f7">${pay}</td></tr>`;
  drag.result={win,foul:p.foul,rt:p.rt,et:p.et,trap:p.trap,aet:a.et,atrap:a.trap,pay:lastPayout,bonus};
  setTimeout(()=>{$('fintab').innerHTML='<tr style="opacity:.7"><td>Lane</td><td></td><td>Car</td><td>Reaction</td><td>ET</td><td>Trap</td><td>Pay</td></tr>'+row(p,'+'+money(lastPayout))+row(a,'');
@@ -1294,7 +1296,7 @@ $('pcls').addEventListener('click',e=>{const t=e.target.closest('[data-pc],[data
 function classNote(T){const lim=CLASSLIM[T.id];if(!lim)return'';const d=effDef(save.active),li=CLASSES.findIndex(c=>c[0]===lim),ci=CLASSES.findIndex(c=>c[0]===d.cls);
  return' ['+(lim==='X'?'Open class':'Class '+lim+' max')+' · you: '+d.cls+' '+d.pi+(ci>li?' — over the limit':'')+']';}
 function driftTick(dt){const f=free,a=Math.abs(f.slip||0),el=$('drift');
- if(a>.22&&f.v>9){f.dc=(f.dc||0)+a*f.v*dt*12;f.dq=0;}else if(f.dc){f.dq=(f.dq||0)+dt;if(f.dq>.9||f.v<4){const pts=Math.round(f.dc);f.dc=0;if(pts>=50){f.dtot=(f.dtot||0)+pts;const best=+localStorage.getItem('am_drift_best')||0;if(pts>best){localStorage.setItem('am_drift_best',pts);flash('DRIFT +'+pts+' · NEW BEST!');}else flash('DRIFT +'+pts);}}}
+ if(a>.22&&f.v>9){f.dc=(f.dc||0)+a*f.v*dt*12;f.dq=0;}else if(f.dc){f.dq=(f.dq||0)+dt;if(f.dq>.9||f.v<4){const pts=Math.round(f.dc);f.dc=0;if(pts>=50){f.dtot=(f.dtot||0)+pts;DAILY.drift(pts);const best=+localStorage.getItem('am_drift_best')||0;if(pts>best){localStorage.setItem('am_drift_best',pts);flash('DRIFT +'+pts+' · NEW BEST!');}else flash('DRIFT +'+pts);}}}
  if(el){const on=(f.dc||0)>5;el.style.display=on||f.dtot?'block':'none';el.textContent=on?'DRIFT '+Math.round(f.dc):'Drift score '+(f.dtot||0);}}
 function enterWorld(mk){garageHide();
  clearRace();clearTraffic();if(world){scene.remove(world);disposeAll(world);world=null;}
@@ -1306,6 +1308,70 @@ function enterWorld(mk){garageHide();
  $('menu').style.display='none';$('fin').style.display='none';hidePrompt();
  camera.position.set(free.x-Math.sin(free.h)*10,5,free.z-Math.cos(free.h)*10);}
 function hidePrompt(){$('prompt').style.display='none';$('ring').style.display='none';activeMarker=null;}
+// ================= v37 DAILY CHALLENGES =================
+// No server: the day's 3 challenges come from a seeded RNG on the local date (YYYYMMDD), so everyone gets the same set; reset at local midnight.
+// Targets that depend on the garage (class, AWD, speeds) fall back to an Open/any-car version so each one is doable with cars you own.
+const DAILY=(()=>{const KEY='am_daily',now=()=>window.__dailyNow?window.__dailyNow():Date.now();
+ const dayKey=t=>{const d=new Date(t);return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
+ const prevKey=k=>{const d=new Date(Math.floor(k/10000),Math.floor(k/100)%100-1,k%100-1);return dayKey(d.getTime());};
+ const rng=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};
+ const TYPES=['race','drift','speed','rally','drag','miles'],REW=[1500,2000,2500,3000],ALL=5000,STREAK=500,STREAKMAX=10;
+ const tlen={};const trackLen=id=>{if(tlen[id])return tlen[id];const T=TRACKS.find(t=>t.id===id);const c=new THREE.CatmullRomCurve3(T.ctrl.map(p=>new THREE.Vector3(p[0],0,p[1])),true,'centripetal');return tlen[id]=c.getLength();};
+ const owned=()=>Object.keys(save.owned).map(id=>effDef(id));
+ const etSim=d=>{let v=0,z=0,t=0;const dt=1/60;while(z<QM&&t<40){v+=accelAt(d,v)*dt;z+=v*dt;t+=dt;}return t;};
+ const awdOwned=()=>Object.keys(save.owned).some(id=>effDef(id).drive==='awd'||save.owned[id].inv.includes('drive:awd'));
+ function gen(k){const R=rng(k*2654435761>>>0);R();R();const pool=[...TYPES],out=[];
+  while(out.length<3){const t=pool.splice(Math.floor(R()*pool.length),1)[0];const c={t,rew:REW[Math.floor(R()*REW.length)]},r1=R(),r2=R();const cars=owned();
+   if(t==='race'){c.track=r1<.5?'t1':'t2';const L=RACECLS[c.track].filter(x=>x!=='OPEN');let cl=L[Math.floor(r2*L.length)];const el=cars.filter(d=>fitsCls(d,cl));if(!el.length){cl='OPEN';}c.cls=cl;
+    const top=Math.max(...(el.length?el:cars).map(d=>d.top));c.target=Math.ceil(3*trackLen(c.track)/(top*.42)/5)*5;}
+   else if(t==='drift')c.target=200+Math.round(r1*6)*50;
+   else if(t==='speed'){const best=Math.max(...cars.map(d=>d.top))*2.237;c.target=Math.min(100+Math.round(r1*5)*5,Math.floor(best*.92/5)*5);}
+   else if(t==='rally'){c.awd=awdOwned();}
+   else if(t==='drag'){const e=Math.min(...cars.map(etSim));c.target=Math.ceil((e*1.04+r1*.4)*10)/10;}
+   else if(t==='miles')c.target=2+Math.floor(r1*4);
+   out.push(c);}return out;}
+ const desc=c=>{const T=id=>TRACKS.find(t=>t.id===id).name;switch(c.t){
+  case'race':return`Finish ${T(c.track)} (${c.cls==='OPEN'?'Open class':'Class '+c.cls}) in under ${fmt(c.target).replace(/\.000$/,'')}`;
+  case'drift':return`Pull off a single ${c.target}-point drift in free roam`;
+  case'speed':return`Hit ${c.target} mph up on the I-17 freeway`;
+  case'rally':return c.awd?'Win Dust Devil Rally in an AWD car':'Win Dust Devil Rally (any car)';
+  case'drag':return`Run the quarter mile under ${c.target.toFixed(1)} s (ET)`;
+  case'miles':return`Drive ${c.target} miles in free roam`;}};
+ let st=null;function load(){try{st=JSON.parse(localStorage.getItem(KEY)||'null');}catch(e){st=null;}if(!st||typeof st!=='object')st={};st.streak=st.streak|0;st.last=st.last|0;}
+ const store=()=>localStorage.setItem(KEY,JSON.stringify(st));
+ function cur(){if(!st)load();const k=dayKey(now());if(st.day!==k){st.day=k;st.ch=gen(k);st.p=[0,0,0];st.claimed=[0,0,0];st.bonus=0;store();}return st;}
+ const done=i=>{const s=cur(),c=s.ch[i];return c.t==='race'||c.t==='drag'?s.p[i]>0&&s.p[i]<=c.target:c.t==='rally'?s.p[i]>=1:s.p[i]>=c.target;};
+ const streakNow=()=>{const s=cur();return s.last===s.day||s.last===prevKey(s.day)?s.streak:0;};
+ function upd(i,val,better){const s=cur();if(done(i))return;const old=s.p[i];s.p[i]=better(old,val);if(s.p[i]!==old){store();if(done(i))flash('Daily done: '+desc(s.ch[i]).split(' (')[0].slice(0,34)+'!');render();}}
+ const each=(t,f)=>{const s=cur();s.ch.forEach((c,i)=>{if(c.t===t)f(c,i);});};
+ const lower=(a,b)=>a&&a<=b?a:b,higher=(a,b)=>Math.max(a,b);
+ const api={
+  race(trackId,cls,time,place,def){if(trackId==='t5'){if(place===1)each('rally',(c,i)=>{if(!c.awd||def.drive==='awd')upd(i,1,higher);});return;}
+   each('race',(c,i)=>{if(c.track===trackId&&(c.cls==='OPEN'||cls===c.cls||cls!=='OPEN'&&fitsCls(def,c.cls)))upd(i,time,lower);});},
+  drift(pts){each('drift',(c,i)=>upd(i,pts,higher));},
+  speed(mph){each('speed',(c,i)=>upd(i,Math.floor(mph),higher));},
+  drag(et){each('drag',(c,i)=>upd(i,+et.toFixed(3),lower));},
+  dist:0,miles(m){this.dist+=m;if(this.dist<.01)return;const d=this.dist;this.dist=0;each('miles',(c,i)=>upd(i,+(cur().p[i]+d).toFixed(3),higher));},
+  claim(i){const s=cur();if(!done(i)||s.claimed[i])return;s.claimed[i]=1;save.cash+=s.ch[i].rew;persist();store();updCash();if(state==='garage')renderGarage();flash('+'+money(s.ch[i].rew));render();},
+  claimAll(){const s=cur();if(s.bonus||!s.claimed.every(Boolean))return;const ns=(s.last===prevKey(s.day)?s.streak:0)+1;s.streak=ns;s.last=s.day;s.bonus=1;const b=ALL+STREAK*Math.min(ns-1,STREAKMAX);save.cash+=b;persist();store();updCash();if(state==='garage')renderGarage();flash('All 3 done! +'+money(b)+' · streak '+ns);render();},
+  get state(){return cur();},gen,desc,done,dayKey,streakNow,reload:()=>{st=null;},
+  open(){$('daily').style.display='flex';render();},close(){$('daily').style.display='none';}};
+ function left(){const t=now(),d=new Date(t);const m=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1).getTime();const s=Math.max(0,Math.floor((m-t)/1000));return`${Math.floor(s/3600)}h ${String(Math.floor(s/60)%60).padStart(2,'0')}m ${String(s%60).padStart(2,'0')}s`;}
+ function render(){const el=$('dlist');if(!el||$('daily').style.display!=='flex')return;const s=cur();const sk=streakNow();
+  let h=`<div class="dtop">Resets in <b>${left()}</b> · Streak <b>${sk}</b> day${sk===1?'':'s'}</div>`;
+  s.ch.forEach((c,i)=>{const dn=done(i),p=s.p[i];let f,txt;
+   if(c.t==='race'||c.t==='drag'){f=dn?1:p?Math.min(.95,c.target/p):0;txt=p?'Best '+(c.t==='drag'?p.toFixed(3)+' s':fmt(p)):'Not run yet';}
+   else if(c.t==='rally'){f=p?1:0;txt=p?'Won':'Not won yet';}
+   else{f=Math.min(1,p/c.target);txt=c.t==='miles'?p.toFixed(2)+' / '+c.target+' mi':p+' / '+c.target+(c.t==='speed'?' mph':' pts');}
+   h+=`<div class="dch${dn?' dn':''}"><div><b>${desc(c)}</b><br><span style="opacity:.75">${txt}</span> · <span style="color:#7f7">${money(c.rew)}</span></div><div class="dbar"><i style="width:${Math.round(f*100)}%"></i></div>`+
+    `<button class="btn sm" data-dc="${i}" ${dn&&!s.claimed[i]?'':'disabled'}>${s.claimed[i]?'Claimed':dn?'Claim':'In progress'}</button></div>`;});
+  const ns=(s.last===prevKey(s.day)?s.streak:0)+1,b=ALL+STREAK*Math.min(ns-1,STREAKMAX);
+  h+=`<div class="dch"><div><b>All 3 bonus</b>${s.bonus?'':` (day ${ns} of streak)`}<br><span style="color:#7f7">${money(s.bonus?0:b)}</span>${s.bonus?' · claimed':''}</div><button class="btn sm" data-dc="all" style="background:#a72" ${!s.bonus&&s.claimed.every(Boolean)?'':'disabled'}>${s.bonus?'Claimed':'Claim bonus'}</button></div>`;
+  h+=`<div style="opacity:.6;font-size:11px">Everyone gets the same challenges each day (local date). Streak: claim the all-3 bonus on back-to-back days, +${money(STREAK)} per day (up to +${money(STREAK*STREAKMAX)}).</div>`;
+  el.innerHTML=h;}
+ api.render=render;setInterval(render,1000);window.__daily=api;return api;})();
+$('dlist').addEventListener('click',e=>{const b=e.target.closest('[data-dc]');if(!b||b.disabled)return;b.dataset.dc==='all'?DAILY.claimAll():DAILY.claim(+b.dataset.dc);});
+$('dclose').onclick=()=>DAILY.close();$('dbtn').onclick=()=>DAILY.open();$('gdaily').onclick=()=>DAILY.open();
 function worldTick(dt,now){
  const inp=playerInput();
  const fy=free.y||0,ri=fy>1?{type:'paved'}:roadInfo(free.x,free.z),off=ri.type==='off',dirt=ri.type==='dirt';free.surface=ri.type;const fx0=free.x,fz0=free.z;
@@ -1315,6 +1381,7 @@ function worldTick(dt,now){
  // buildings + rocks collision approximated: buildings boxes (not when up on the freeway)
  if((free.y||0)<2)for(const b of openWorld.userData.bld){const hx=b[2]/2+1.2,hz=b[3]/2+1.2,dx=free.x-b[0],dz=free.z-b[1];if(Math.abs(dx)<hx&&Math.abs(dz)<hz){const px=hx-Math.abs(dx),pz=hz-Math.abs(dz);if(px<pz)free.x+=Math.sign(dx)*px;else free.z+=Math.sign(dz)*pz;free.v*=.5;}}
  if(Math.abs(free.x)>BOUND||Math.abs(free.z)>BOUND){free.x=Math.max(-BOUND,Math.min(BOUND,free.x));free.z=Math.max(-BOUND,Math.min(BOUND,free.z));free.v*=.3;flash('Edge of the map');}
+ {const st=Math.hypot(free.x-fx0,free.z-fz0);if(st<5)DAILY.miles(st/1609.34);const mph=Math.abs(free.v)*2.237;if((free.y||0)>1&&mph>60)DAILY.speed(mph);}
  cullWorld(free.x,free.z);free.region=regionAt(free.x,free.z);
  free.off=off||dirt;
  let hint='';

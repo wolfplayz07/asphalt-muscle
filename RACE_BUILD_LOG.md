@@ -236,3 +236,11 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - Drag races stay solo. If the host leaves, the room closes, and a full room (8) turns new players away.
 - Tested with two headless tabs (WebRTC is blocked on the test box by policy, so the tabs used a stand-in transport with the same API): room create and join, the roster, car sync, a host-started 8-car race on Ridge Loop (2 humans + 6 AI) with both views agreeing to about 1 m, and leaving the room. The real PeerJS path was checked up to opening a room on the public signaling server.
 - Known limits: strict or symmetric NATs (some carrier networks, corporate Wi-Fi) may fail to connect, because there is no paid relay. Sprint traffic is local to each player. Drag is solo. There is no host migration.
+
+## 2026-10-30 — am-v37 ◆ Daily challenges
+- New **★ Daily** button in free roam (under the minimap) and in the Garage header. It opens a panel with the day's 3 challenges, progress bars, a Claim button for each, and a live countdown to the reset.
+- There is no server. The challenges come from a seeded random generator keyed to your local date, so every player gets the same set each day, and they reset at local midnight.
+- Challenge types: beat a target time on Ridge Loop or Canyon Eight in a given class; a single drift worth N points; a top speed up on the I-17 freeway; win Dust Devil Rally in an AWD car; a quarter mile under X seconds; and N miles driven in free roam.
+- Targets adapt so you can always finish them with cars you own. A class nothing in your garage fits switches to Open. The AWD rally becomes "any car" if you have no AWD car or part. Speed and quarter-mile targets come from your fastest owned car.
+- Rewards: $1,500–$3,000 per challenge and a $5,000 bonus for finishing all 3. Claiming the bonus on back-to-back days builds a streak worth +$500 per day (up to +$5,000). Missing a day resets the streak.
+- Progress is saved on the device and updates live from races, drag runs, drifts, freeway speed and free-roam distance.
