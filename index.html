@@ -27,7 +27,8 @@ canvas#gl{display:block;position:fixed;inset:0}
 #pos{position:fixed;top:calc(env(safe-area-inset-top) + 44px);right:calc(env(safe-area-inset-right) + 12px);font:800 30px sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
 #mini{position:fixed;left:calc(env(safe-area-inset-left) + 12px);top:calc(env(safe-area-inset-top) + 10px);width:130px;height:130px;border-radius:10px;border:2px solid rgba(255,255,255,.5);pointer-events:none}
 #ring{position:fixed;left:50%;top:42%;width:90px;height:90px;margin:-45px 0 0 -45px;border-radius:50%;display:none;align-items:center;justify-content:center;font:800 30px sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
-#prompt{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(10,12,18,.9);border-radius:14px;padding:14px 20px;text-align:center;display:none;z-index:4;font-size:20px;font-weight:700}
+#pcls{font-size:13px;font-weight:600;margin:6px 0}#pcls .chip{display:inline-block;padding:4px 10px;margin:2px;border-radius:10px;border:2px solid transparent;cursor:pointer;color:#111;font-weight:800}#pcls .chip.on{border-color:#fff;box-shadow:0 0 0 2px #000 inset}#pcls .el{margin:5px 0;line-height:1.6}#pcls .ok{color:#7f7}#pcls .bad{color:#f77}#pcls .blk{background:#5a1010;border-radius:8px;padding:6px;margin:6px 0;color:#fff}
+#prompt{position:fixed;left:50%;top:50%;max-height:92vh;overflow:auto;max-width:94vw;transform:translate(-50%,-50%);background:rgba(10,12,18,.9);border-radius:14px;padding:14px 20px;text-align:center;display:none;z-index:4;font-size:20px;font-weight:700}
 #gbtn{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);display:none;z-index:4;background:#1a9e4a;font-size:22px}
 #hint{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 100px);width:100%;text-align:center;font:600 14px sans-serif;text-shadow:0 1px 3px #000;pointer-events:none}
 body.free #hud,body.free #pos,body.garage #hud,body.garage #pos{display:none}body.nolap #laptimes{display:none}#rinfo{display:none}body.rally #rinfo{display:inline}body:not(.free) #mini,body:not(.free) #hint,body:not(.free) #cash{display:none}
@@ -62,7 +63,7 @@ body.free #steerT,body.racing #steerT{display:block}
 <button class="btn" id="go">Tap to start</button><div style="opacity:.65;font-size:12px;margin-top:6px">Free roam. Stop in a glowing marker to race, or at the green marker in town for the Garage.</div></div>
 <div id="fin"><h1 id="fint" style="margin:6px">FINISH</h1><div id="payout" style="font:800 20px ui-monospace,Menlo,monospace;color:#7f7"></div><table id="fintab"></table><div><button class="btn" id="again">Restart</button><button class="btn" id="toworld" style="background:#2a7">Back to world</button><button class="btn" id="tomenu" style="background:#444">Menu</button></div></div>
 <canvas id="mini" width="260" height="260"></canvas><div id="ring"></div><div id="hint"></div><button id="snd" aria-label="Sound">🔊</button><div id="sndp">Engine <input id="sndv" type="range" min="0" max="100"><button id="sndm">Mute</button></div>
-<div id="prompt"><div id="ptxt"></div><button class="btn" id="yes">Yes</button><button class="btn" id="no" style="background:#444">No</button></div>
+<div id="prompt"><div id="ptxt"></div><div id="pcls"></div><button class="btn" id="yes">Yes</button><button class="btn" id="no" style="background:#444">No</button></div>
 <button class="btn" id="gbtn">Enter Garage</button>
 <div id="garage"><div id="gtop"><b style="font-size:18px">GARAGE</b><span id="gcash"></span><button class="btn sm" id="gexit" style="background:#2a7">Exit ▶</button></div>
 <div id="tabs"><button class="tab on" data-tab="mine">My Cars</button><button class="tab" data-tab="deal">Dealership</button><button class="tab" data-tab="upg">Parts</button><button class="tab" data-tab="tune">Tune</button><button class="tab" data-tab="paint">Paint</button></div><div id="gbody"></div></div>
@@ -168,9 +169,17 @@ function buildDef(id,parts,tune){const b=CAR(id),d={...b},P={...stockParts(id),.
  d.top=b.top*(1+F.top);d.acc=b.acc*(1+F.acc);d.grip=b.grip*(1+F.grip);d.off=Math.max(-.6,Math.min(.95,F.off));d.launch=Math.max(.6,1+F.launch);d.brake=1+F.brake;
  d.drift=Math.max(0,Math.min(1,.1+F.drift));d.ride=F.ride;d.vis=vis;d.parts=P;d.tune=t;
  const st=statsOf(d);d.stats=st;d.pi=st.pi;d.cls=classOf(st.pi)[0];return d;}
+// v32: realistic launch -- acceleration = min(traction limit, power limit) through 5 gears, fading to 0 at top speed.
+// traction: 4.5 m/s2 base x launch (tires/diff/AWD), grip, body weight; power: acc rating, constant power above 22 m/s; ~.2 s torque dip at each shift
+const HEAVY={hauler:1.32,brute:1.25,long:1.06,coupe:1.06,sedan4:1.08,lnose:.93,zc:.95},GSHIFT=[.2,.38,.56,.76];
+function accelAt(d,v,sm){const h=HEAVY[d.shape]||1,va=Math.abs(v),top=d.top*(sm?sm.top:1);
+ const ap=d.acc*(sm?sm.acc:1)*.36/h*Math.min(1,22/Math.max(va,.1));
+ const at=4.5*(1+(Math.max(1,d.launch||1)-1)*2)*Math.pow(d.grip*(sm?sm.grip:1)/1.9,.4)*(d.drive==='awd'?1.1:d.drive==='fwd'?.92:1)/Math.sqrt(h);
+ const u=va/top;let sd=1;for(const g of GSHIFT)if(u>g&&u<g+.015)sd=.45;return Math.min(ap,at)*Math.max(0,1-u*u*u*u)*sd;}
+function t60Sim(d){let v=0,t=0;const dt=1/60;while(v<26.82&&t<30){v+=accelAt(d,v)*dt;t+=dt;}return t;}
 function statsOf(d){const so=surfMul(d,'dirt'),cl=v=>Math.max(0,Math.min(10,v));
  const s={speed:cl(d.top*2.237/20),hand:cl(d.grip*3.4*(1-.25*d.drift)),accel:cl(d.acc/4),launch:cl(d.acc*d.launch/4.4),brake:cl(5*d.brake),off:cl(d.top*so.top*2.237/16),drift:cl(d.drift*10)};
- s.t60=26.82/(d.acc*(1+(d.launch-1)*.8));
+ s.t60=t60Sim(d);
  s.pi=Math.max(100,Math.min(999,Math.round((.32*s.speed+.28*s.hand+.2*s.accel+.08*s.launch+.06*s.brake+.06*s.off)*150-420)));return s;}
 function effDef(id){const b=CAR(id),e=save.owned[id]||newEntry(id);const d=buildDef(id,e.parts,e.tune);d.paint=e.paint??b.color;if(save.owned[id])d.finish=e.finish||'gloss';return d;}
 const partsCost=(id,P)=>{const e=save.owned[id];let c=0;for(const k in P){const o=PART(k,P[k]);if(o&&o[3]&&e.parts[k]!==P[k]&&!e.inv.includes(k+':'+P[k]))c+=o[3];}return c;};
@@ -507,7 +516,7 @@ function finish(now){state='done';
    return `<tr style="${r.ai?'':'color:#ff5'}"><td>${ord(i+1)}</td><td>${r.name}</td><td>${r.def.name}</td><td>${t}</td><td style="color:#7f7">+${money(PAY[i])}</td></tr>`}).join('');
   $('fint').textContent='FINISH — '+ord(place);$('payout').textContent=`You earned ${money(lastPayout)} · Cash ${money(save.cash)}`+(SPR?` · Traffic hits: ${player.hits||0}`:'')+(TRACKS[trackSel].rally?` · Splits: ${(player.splits||[]).map(fmt).join(' ')}`:'');$('fin').style.display='flex';},900);}
 function physics(r,dt,inp,off,maxV,sm){r.thr=inp.g?1:0;const d=r.def,L=d.launch||1,v0=r.v;
- if(inp.g)r.v+=(sm?d.acc*sm.acc:off?14:d.acc)*(r.v<18?L:1+(L-1)*.25)*dt;else if(inp.b)r.v-=(r.v>0?40*(d.brake||1):10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
+ if(inp.g)r.v+=(r.v<0?d.acc*.5:accelAt(d,r.v,sm)*(off&&!sm?.7:1))*dt;else if(inp.b)r.v-=(r.v>0?40*(d.brake||1):10)*dt;else r.v-=Math.sign(r.v)*Math.min(Math.abs(r.v),6*dt);
  if(r.v>maxV)r.v=Math.max(maxV,Math.min(r.v,v0)-40*dt);r.v=Math.max(-10,r.v);
  r.steer+=(inp.s-r.steer)*Math.min(1,dt*8);
  const G=sm?d.grip*sm.grip:d.grip,dr=d.drift||0;
@@ -1248,7 +1257,26 @@ function drawMini(now){mctx.drawImage(mbg,0,0,MS,MS);for(const mk of MARKERS){mc
  mctx.fillStyle='#30ff70';mctx.fillRect(mx(GARAGE.x)-2.5,mz(GARAGE.z)-2.5,5,5);
  const p=free;mctx.save();mctx.translate(mx(p.x),mz(p.z));mctx.rotate(-p.h);mctx.fillStyle='#ff0';mctx.beginPath();mctx.moveTo(0,4.5);mctx.lineTo(-3,-3.5);mctx.lineTo(3,-3.5);mctx.fill();mctx.restore();}
 let free=null,activeMarker=null;
-const CLASSLIM={t1:'B',t2:'A',t3:'S1',t4:'X',t5:'A'};
+// v32: every race runs class-limited events; together they cover D..X. Over-class cars are blocked at the join prompt.
+const RACECLS={t1:['D','B','S1'],t2:['C','A'],t3:['S2','X'],t4:['C','X'],t5:['B','A']};
+const CLASSLIM=Object.fromEntries(Object.entries(RACECLS).map(([k,v])=>[k,v[v.length-1]]));let raceCls=null;
+const clsIdx=c=>CLASSES.findIndex(x=>x[0]===c),fitsCls=(d,lim)=>clsIdx(d.cls)<=clsIdx(lim),clsCol=c=>CLASSES[clsIdx(c)][2],clsMax=c=>CLASSES[clsIdx(c)][1];
+function renderPrompt(){const mk=activeMarker;if(!mk)return;const T=TRACKS[mk.track],L=RACECLS[T.id],me=effDef(save.active);
+ if(!L.includes(raceCls))raceCls=L.find(c=>fitsCls(me,c))||L[L.length-1];const lim=raceCls,ok=fitsCls(me,lim);
+ let h='<div>'+L.map(c=>`<span class="chip${c===lim?' on':''}" data-pc="${c}" style="background:${clsCol(c)}">${c==='X'?'Open (X)':'Class '+c}</span>`).join('')+'</div>';
+ h+='<div class="el">Eligible ('+(lim==='X'?'any car':'PI \u2264 '+clsMax(lim))+'): '+Object.keys(save.owned).map(id=>{const d=effDef(id),f=fitsCls(d,lim);return`<span class="${f?'ok':'bad'}">${f?'\u2713':'\u2717'} ${CAR(id).name} ${d.cls} ${d.pi}${id===save.active?' (current)':''}</span>`;}).join(' \u00b7 ')+'</div>';
+ if(!ok){h+=`<div class="blk">Over the limit: your ${CAR(save.active).name} is class ${me.cls} (PI ${me.pi}). This event is Class ${lim} max (PI \u2264 ${clsMax(lim)}).</div>`;
+  const sw=Object.keys(save.owned).filter(id=>id!==save.active&&fitsCls(effDef(id),lim)).slice(0,3).map(id=>`<button class="btn sm" data-use="${id}" style="background:#2a7">Use ${CAR(id).name}</button>`);
+  const e=save.owned[save.active],bl=e.builds.map((B,i)=>[B,i]).filter(([B])=>fitsCls(buildDef(save.active,B.parts,B.tune),lim)).slice(0,3).map(([B,i])=>{const c=partsCost(save.active,B.parts);return`<button class="btn sm" data-bl="${i}" style="background:#27a"${c>save.cash?' disabled':''}>Load build: ${B.name}${c?' ('+money(c)+')':''}</button>`;});
+  h+=sw.concat(bl).join('')||'<div class="bad">No car or saved build fits. Pick a higher class or tune down in the Garage.</div>';}
+ $('pcls').innerHTML=h;$('yes').disabled=!ok;
+ $('ptxt').textContent='Join race: '+T.name+'?'+(T.sprint?' (1st '+money(T.pay[0])+', traffic!)':T.rally?' (time trial, 1st '+money(T.pay[0])+')':T.drag?' (win '+money(DRAG.win)+', perfect launch +'+money(DRAG.perfect)+')':'');}
+function refreshFree(){if(!free)return;const key=JSON.stringify([save.active,save.owned[save.active]]);if(free.key===key)return;const vis=free.mesh.visible;disposeCar(free.mesh);free.def=effDef(save.active);free.key=key;free.mesh=makeCar(free.def);free.mesh.visible=vis;updCash();}
+$('pcls').addEventListener('click',e=>{const t=e.target.closest('[data-pc],[data-use],[data-bl]');if(!t||t.disabled)return;
+ if(t.dataset.pc)raceCls=t.dataset.pc;
+ else if(t.dataset.use){save.active=t.dataset.use;persist();refreshFree();flash('Switched to '+CAR(save.active).name);}
+ else{const e2=save.owned[save.active],B=e2.builds[+t.dataset.bl];if(B&&installParts(B.parts)){e2.tune={...TUNE0,...B.tune};persist();refreshFree();flash('Loaded '+B.name);}}
+ renderPrompt();});
 function classNote(T){const lim=CLASSLIM[T.id];if(!lim)return'';const d=effDef(save.active),li=CLASSES.findIndex(c=>c[0]===lim),ci=CLASSES.findIndex(c=>c[0]===d.cls);
  return' ['+(lim==='X'?'Open class':'Class '+lim+' max')+' · you: '+d.cls+' '+d.pi+(ci>li?' — over the limit':'')+']';}
 function driftTick(dt){const f=free,a=Math.abs(f.slip||0),el=$('drift');
@@ -1280,7 +1308,7 @@ function worldTick(dt,now){
   if(d<9){if(!mk.inside){mk.inside=true;mk.t=0;mk.prompted=false;}
    if(!mk.prompted){if(Math.abs(free.v)<1){mk.t+=dt;const f=Math.min(1,mk.t/5);const r=$('ring');r.style.display='flex';
       r.style.background=`conic-gradient(rgba(255,200,40,.9) ${f*360}deg,rgba(255,255,255,.15) 0)`;r.textContent=Math.ceil(5-mk.t);
-      if(mk.t>=5){mk.prompted=true;r.style.display='none';activeMarker=mk;$('ptxt').textContent='Join race: '+T.name+'?'+classNote(T)+(T.sprint?' (1st '+money(T.pay[0])+', traffic!)':T.rally?' (time trial, 1st '+money(T.pay[0])+')':T.drag?' (win '+money(DRAG.win)+', perfect launch +'+money(DRAG.perfect)+')':'');$('prompt').style.display='block';}}
+      if(mk.t>=5){mk.prompted=true;r.style.display='none';activeMarker=mk;raceCls=null;renderPrompt();$('prompt').style.display='block';}}
     else{mk.t=0;$('ring').style.display='none';hint='Stop here to join '+T.name;}}}
   else if(mk.inside){mk.inside=false;mk.t=0;mk.prompted=false;if(activeMarker===mk)hidePrompt();$('ring').style.display='none';}
   else if(d<60)hint=T.name+' race ahead';}
@@ -1356,7 +1384,7 @@ $('garage').addEventListener('input',e=>{const k=e.target.dataset&&e.target.data
 $('gbtn').onclick=openGarage;
 $('gexit').onclick=()=>{if(state!=='garage')return;garageHide();enterWorld({x:GARAGE.x,z:GARAGE.z+4,h:0});};
 // ================= FLOW =================
-$('yes').onclick=()=>{const mk=activeMarker;if(!mk)return;raceFrom=mk;trackSel=mk.track;hidePrompt();$('gbtn').style.display='none';startRace();};
+$('yes').onclick=()=>{const mk=activeMarker;if(!mk)return;if(!fitsCls(effDef(save.active),raceCls)){renderPrompt();flash('Car is over the class limit');return;}raceFrom=mk;trackSel=mk.track;hidePrompt();$('gbtn').style.display='none';startRace();};
 $('no').onclick=()=>{hidePrompt();};
 let raceFrom=null;
 $('toworld').onclick=()=>enterWorld(raceFrom||MARKERS[trackSel]);

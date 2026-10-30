@@ -219,3 +219,11 @@ Headless audit of every road endpoint (town grid, alleys, port streets, dirt/san
 - Tire squeal plays during slides on pavement.
 - A sound button with a volume slider and Mute sits next to the cash display. The setting is saved between sessions. Audio starts on the first tap (iOS Safari rule) and pauses when the app is in the background.
 - To keep the CPU load low, one fixed set of oscillators is updated about 30 times a second and the noise buffer is shared.
+
+## 2026-10-30 — am-v32 ◆ Realistic 0-60 times and enforced race classes
+- New acceleration model: each moment the car uses the lower of a traction limit (launch from tires, diff and AWD; grip; body weight) and a power limit (the car's accel rating, with constant power above about 50 mph). A short torque dip at each of the 4 upshifts gives a 5-speed feel. Acceleration fades to zero at top speed, so top speeds are unchanged.
+- Trucks (Haymaker, Brute) and the long coupes carry a weight factor. The compacts are a little lighter.
+- Measured 0-60 runs in headless Chrome at about 59 fps: Bandit stock 6.42 s, Haymaker stock 7.46 s, Ronin stock 6.07 s, Kestrel Drag build 2.70 s, Gale Drag build 2.70 s. The garage 0-60 now comes from the same simulation and matched every run to within 0.02 s.
+- Race classes are now enforced. Each race offers class events, so every class has at least one race: Ridge Loop D/B/S1, Canyon Eight C/A, Highway Sprint S2/X, Drag C/X, Rally B/A.
+- The join prompt has class chips and lists each owned car with a ✓ or ✗ and its PI. An over-class car is blocked with a clear message. Quick buttons switch to an eligible car or load a saved build that fits, showing the build's cost if parts must be bought.
+- PI and classes are unchanged, because the accel stat still feeds PI as before.
