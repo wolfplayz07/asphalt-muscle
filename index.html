@@ -128,7 +128,7 @@ const classOf=pi=>CLASSES.find(c=>pi<=c[1])||CLASSES[6];
 const PAINTS=[0x111111,0xc8102e,0x1f6fd1,0xff7a1a,0x7fc8a9,0x5b2a86,0xe8e8e8,0xf2c200,0x2e7d32,0x8b5a2b];
 const FINISHES=[{k:'gloss',name:'Gloss paint',cost:0},{k:'matte',name:'Matte',cost:1500},{k:'metal',name:'Metallic flake',cost:3000},{k:'glass',name:'Fiberglass',cost:5000},{k:'cacc',name:'Carbon accents',cost:6000},{k:'carbon',name:'Carbon fiber',cost:12000}];
 const PAINT_COST=500,PAYOUT=[5000,3000,1500,500],SAVE_KEY='am_save';
-function newEntry(id){return{parts:stockParts(id),inv:[],tune:{...TUNE0},builds:[],paint:null,finish:'gloss',spent:0};}
+function newEntry(id){return{paints:[],fins:['gloss'],parts:stockParts(id),inv:[],tune:{...TUNE0},builds:[],paint:null,finish:'gloss',spent:0};}
 // old saves had eng/trn/tir/wgt levels 0-3: convert them to the equivalent installed (and owned) parts
 function migrateEntry(id,o){const e=newEntry(id),T=['stock','street','sport','race'],lv=k=>Math.max(0,Math.min(3,o[k]|0));
  if(o.parts&&typeof o.parts==='object'){for(const p of PARTS)if(PART(p.k,o.parts[p.k]))e.parts[p.k]=o.parts[p.k];
@@ -140,7 +140,8 @@ function migrateEntry(id,o){const e=newEntry(id),T=['stock','street','sport','ra
   if(tl)e.parts.trans=T[tl];if(wl)e.parts.weight=T[wl];
   if(ti){e.parts.tires='sport';if(ti>=2)e.parts.susp='sport';if(ti>=3)e.inv.push('tires:rally');}}
  for(const p of PARTS){const v=e.parts[p.k];if(v!==p.o[0][0]&&!e.inv.includes(p.k+':'+v))e.inv.push(p.k+':'+v);}
- e.spent=Math.max(0,+o.spent||0);e.paint=o.paint!=null&&Number.isFinite(+o.paint)?+o.paint:null;e.finish=FINISHES.some(f=>f.k===o.finish)?o.finish:'gloss';return e;}
+ e.spent=Math.max(0,+o.spent||0);e.paint=o.paint!=null&&Number.isFinite(+o.paint)?+o.paint:null;e.finish=FINISHES.some(f=>f.k===o.finish)?o.finish:'gloss';
+ e.paints=[...new Set((Array.isArray(o.paints)?o.paints:[]).map(Number).filter(x=>PAINTS.includes(x)).concat(e.paint!=null?[e.paint]:[]))];e.fins=[...new Set(['gloss',e.finish].concat(Array.isArray(o.fins)?o.fins.filter(f=>FINISHES.some(x=>x.k===f)):[]))];return e;}
 function loadSave(){let s=null;try{s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null');}catch(e){s=null;}
  if(!s||typeof s!=='object')s={};
  const out={v:1,cash:Number.isFinite(+s.cash)&&s.cash!==null?Math.max(0,Math.floor(+s.cash)):10000,owned:{},active:null};
@@ -1326,9 +1327,9 @@ function renderGarage(){updCash();if(!gCar||gCar.uid!==gView+JSON.stringify(save
   for(let i=0;i<e.builds.length;i++){const B=e.builds[i],c=partsCost(id,B.parts),d=buildDef(id,B.parts,B.tune);h+=`<div class="it"><div><b>${B.name.replace(/[<>&]/g,'')}</b> ${piTag(d)}<br><span style="opacity:.7">${c?'Missing parts '+money(c):'All parts owned'}</span></div><div><button class="btn sm" data-act="bload" data-i="${i}" ${save.cash<c?'disabled':''}>Load</button><button class="btn sm" style="background:#555" data-act="bdel" data-i="${i}">✕</button></div></div>`;}
   h+=`<button class="btn sm" data-act="bsave" ${e.builds.length>=6?'disabled':''}>Save current build…</button>`;}
  else{const id=save.active,cur=effDef(id).paint;h+=`<div style="margin:2px 0 4px">Paint <b>${CAR(id).name}</b> · ${money(PAINT_COST)} per coat</div><div>`;
-  for(const p of PAINTS)h+=`<span class="sw${p===cur?' on':''}" data-act="paint" data-c="${p}" style="background:#${p.toString(16).padStart(6,'0')}"></span>`;h+='</div>';
+  const E=save.owned[id];for(const p of PAINTS){const own=p===CAR(id).color||E.paints.includes(p);h+=`<span style="display:inline-block;text-align:center;font-size:10px;margin:0 1px"><span class="sw${p===cur?' on':''}" data-act="paint" data-c="${p}" style="background:#${p.toString(16).padStart(6,'0')}"></span><br><span style="color:${own?'#7f7':'#ccc'}">${p===cur?'On':own?'Owned':money(PAINT_COST)}</span></span>`;}h+='</div>';
   const cf=save.owned[id].finish||'gloss';h+=`<div style="margin:8px 0 4px">Body finish</div>`;
-  for(const f of FINISHES){const on=f.k===cf;h+=`<div class="it"><div><b>${f.name}</b>${on?' <span style="color:#7f7">ON</span>':''}<br><span style="opacity:.7">${f.cost?money(f.cost):'Free'}</span></div><button class="btn sm" data-act="finish" data-k="${f.k}" ${on||save.cash<f.cost?'disabled':''}>${on?'Applied':'Apply'}</button></div>`;}}
+  for(const f of FINISHES){const on=f.k===cf,own=!f.cost||save.owned[id].fins.includes(f.k);h+=`<div class="it"><div><b>${f.name}</b>${on?' <span style="color:#7f7">ON</span>':''}<br><span style="${own&&f.cost?'color:#7f7':'opacity:.7'}">${!f.cost?'Free':own?'Owned':money(f.cost)}</span></div><button class="btn sm" data-act="finish" data-k="${f.k}" ${on||(!own&&save.cash<f.cost)?'disabled':''}>${on?'Applied':own?'Apply':'Buy'}</button></div>`;}}
  $('gbody').innerHTML=h;}
 function installParts(P){const id=save.active,e=save.owned[id],c=partsCost(id,P);if(save.cash<c)return false;save.cash-=c;e.spent+=c;
  for(const k in P){if(!PART(k,P[k]))continue;e.parts[k]=P[k];const t=k+':'+P[k];if(PART(k,P[k])[3]&&!e.inv.includes(t))e.inv.push(t);}return true;}
@@ -1344,8 +1345,8 @@ function garageAct(a,el){const id=el.dataset.id;
  else if(a==='bsave'){const e=save.owned[save.active];const n=(prompt('Name this build',PRESETS.find(P=>PARTS.every(x=>e.parts[x.k]===({...stockParts(save.active),...P.p})[x.k]))?.name+' build'||'My build')||'').trim().slice(0,24);if(!n)return;e.builds.push({name:n,parts:{...e.parts},tune:{...e.tune}});flash('Saved '+n);}
  else if(a==='bload'){const e=save.owned[save.active],B=e.builds[+el.dataset.i];if(!B||!installParts(B.parts))return;e.tune={...TUNE0,...B.tune};flash('Loaded '+B.name);}
  else if(a==='bdel'){const e=save.owned[save.active];e.builds.splice(+el.dataset.i,1);}
- else if(a==='paint'){const c=+el.dataset.c,e=save.owned[save.active];if(effDef(save.active).paint===c||save.cash<PAINT_COST)return;save.cash-=PAINT_COST;e.spent+=PAINT_COST;e.paint=c;gView=save.active;}
- else if(a==='finish'){const f=FINISHES.find(x=>x.k===el.dataset.k),e=save.owned[save.active];if(!f||e.finish===f.k||save.cash<f.cost)return;save.cash-=f.cost;e.spent+=f.cost;e.finish=f.k;gView=save.active;}
+ else if(a==='paint'){const c=+el.dataset.c,e=save.owned[save.active];if(effDef(save.active).paint===c)return;const own=c===CAR(save.active).color||e.paints.includes(c);if(!own){if(save.cash<PAINT_COST)return;save.cash-=PAINT_COST;e.spent+=PAINT_COST;e.paints.push(c);}e.paint=c;gView=save.active;}
+ else if(a==='finish'){const f=FINISHES.find(x=>x.k===el.dataset.k),e=save.owned[save.active];if(!f||e.finish===f.k)return;if(f.cost&&!e.fins.includes(f.k)){if(save.cash<f.cost)return;save.cash-=f.cost;e.spent+=f.cost;e.fins.push(f.k);}e.finish=f.k;gView=save.active;}
  if(free&&free.def.id===save.active)free.def=Object.assign(effDef(save.active),{});persist();renderGarage();}
 $('garage').addEventListener('click',e=>{const t=e.target.closest('.tab');if(t){gTab=t.dataset.tab;if(gTab!=='mine'&&gTab!=='deal')gView=save.active;gPrev=null;renderGarage();return;}
  const b=e.target.closest('[data-act]');if(!b||b.disabled)return;e.stopPropagation();garageAct(b.dataset.act,b);});
