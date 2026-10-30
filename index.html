@@ -492,7 +492,7 @@ function setWorldFog(){scene.fog.density=.0042;camera.far=480;camera.updateProje
 function startRace(o){if(o&&o.target)o=null;
  const T=TRACKS[trackSel];if(free)free.mesh.visible=false;openWorld.visible=!!T.sprint;scene.fog.density=.0032;camera.far=800;camera.updateProjectionMatrix();
  document.body.classList.remove('free');document.body.classList.add('racing');hidePrompt();document.body.classList.remove('rally');if(T.drag){document.body.classList.add('nolap');return startDrag(T);}buildTrack(T);clearRace();
- const me=effDef(save.active);const others=RACE_CARS.filter(c=>c.id!==me.id).concat(RACE_CARS).slice(0,3);const LU=o?NET.lineup(o):null;
+ const me=effDef(save.active);const others=raceCls==='OPEN'?openAI(me.pi,3).map(e=>aiDef(e.car,e.pre)):RACE_CARS.filter(c=>c.id!==me.id).concat(RACE_CARS).slice(0,3);const LU=o?NET.lineup(o):null;
  const grid=[[3,-4],[-3,-4],[3,-11],[-3,-11],[3,-18],[-3,-18],[3,-25],[-3,-25]];if(!T.sprint){traffic=[];trafMesh=null;}
  $('lapl').innerHTML=T.sprint?'SPRINT <span id="ln"></span>':T.rally?'CP <span id="ln">0/'+T.cps+'</span>':'LAP <span id="ln">1</span>/3';document.body.classList.toggle('nolap',!!(T.sprint||T.rally));document.body.classList.toggle('rally',!!T.rally);$('rinfo').innerHTML='';
  (LU?LU.map(x=>x.def):[me,...others]).forEach((def,i)=>{const u=LU&&LU[i];const p0=pts[T.sprint?SPS:0];const fx=Math.sin(sAng),fz=Math.cos(sAng);const [lat,back]=grid[i];
@@ -1265,13 +1265,18 @@ function drawMini(now){mctx.drawImage(mbg,0,0,MS,MS);for(const mk of MARKERS){mc
  const p=free;mctx.save();mctx.translate(mx(p.x),mz(p.z));mctx.rotate(-p.h);mctx.fillStyle='#ff0';mctx.beginPath();mctx.moveTo(0,4.5);mctx.lineTo(-3,-3.5);mctx.lineTo(3,-3.5);mctx.fill();mctx.restore();}
 let free=null,activeMarker=null;
 // v32: every race runs class-limited events; together they cover D..X. Over-class cars are blocked at the join prompt.
-const RACECLS={t1:['D','B','S1'],t2:['C','A'],t3:['S2','X'],t4:['C','X'],t5:['B','A']};
+const RACECLS={t1:['D','B','S1','OPEN'],t2:['C','A','OPEN'],t3:['S2','X','OPEN'],t4:['C','X','OPEN'],t5:['B','A','OPEN']};
 const CLASSLIM=Object.fromEntries(Object.entries(RACECLS).map(([k,v])=>[k,v[v.length-1]]));let raceCls=null;
-const clsIdx=c=>CLASSES.findIndex(x=>x[0]===c),fitsCls=(d,lim)=>clsIdx(d.cls)<=clsIdx(lim),clsCol=c=>CLASSES[clsIdx(c)][2],clsMax=c=>CLASSES[clsIdx(c)][1];
+const clsIdx=c=>CLASSES.findIndex(x=>x[0]===c),fitsCls=(d,lim)=>!lim||lim==='OPEN'||clsIdx(d.cls)<=clsIdx(lim),clsCol=c=>c==='OPEN'?'#d8d8d8;color:#111':CLASSES[clsIdx(c)][2],clsMax=c=>c==='OPEN'?Infinity:CLASSES[clsIdx(c)][1];
+// v34 Open class: AI built from any car + preset, spread just under/at the strongest entrant's PI.
+let AIPOOL=null;const aiDef=(id,k)=>{const P=PRESETS.find(x=>x.k===k);const d=P?buildDef(id,{...stockParts(id),...P.p},{...TUNE0,...P.t}):buildDef(id,stockParts(id),{...TUNE0});d.color=d.paint=CAR(id).color;d.name=CAR(id).name;return d;};
+function openAI(top,n){if(!AIPOOL){AIPOOL=[];for(const c of CARS)for(const k of [null,...PRESETS.map(x=>x.k)])AIPOOL.push({car:c.id,pre:k,pi:aiDef(c.id,k).pi});}
+ const used=new Set(),o=[];for(let i=0;i<n;i++){const t=top-(i<Math.ceil(n/3)?0:(i-Math.ceil(n/3)+1)*Math.max(20,top*.06));let b=null,bd=1e9;
+  for(const e of AIPOOL){const d=Math.abs(e.pi-t)+(used.has(e.car)?60:0);if(d<bd){bd=d;b=e;}}used.add(b.car);o.push(b);}return o;}
 function renderPrompt(){const mk=activeMarker;if(!mk)return;const T=TRACKS[mk.track],L=RACECLS[T.id],me=effDef(save.active);
  if(!L.includes(raceCls))raceCls=L.find(c=>fitsCls(me,c))||L[L.length-1];const lim=raceCls,ok=fitsCls(me,lim);
- let h='<div>'+L.map(c=>`<span class="chip${c===lim?' on':''}" data-pc="${c}" style="background:${clsCol(c)}">${c==='X'?'Open (X)':'Class '+c}</span>`).join('')+'</div>';
- h+='<div class="el">Eligible ('+(lim==='X'?'any car':'PI \u2264 '+clsMax(lim))+'): '+Object.keys(save.owned).map(id=>{const d=effDef(id),f=fitsCls(d,lim);return`<span class="${f?'ok':'bad'}">${f?'\u2713':'\u2717'} ${CAR(id).name} ${d.cls} ${d.pi}${id===save.active?' (current)':''}</span>`;}).join(' \u00b7 ')+'</div>';
+ let h='<div>'+L.map(c=>`<span class="chip${c===lim?' on':''}" data-pc="${c}" style="background:${clsCol(c)}">${c==='OPEN'?'Open':c==='X'?'Class X':'Class '+c}</span>`).join('')+'</div>';
+ h+='<div class="el">Eligible ('+(lim==='OPEN'?'Open: any car or build, no limit':lim==='X'?'any car':'PI \u2264 '+clsMax(lim))+'): '+Object.keys(save.owned).map(id=>{const d=effDef(id),f=fitsCls(d,lim);return`<span class="${f?'ok':'bad'}">${f?'\u2713':'\u2717'} ${CAR(id).name} ${d.cls} ${d.pi}${id===save.active?' (current)':''}</span>`;}).join(' \u00b7 ')+'</div>';
  if(!ok){h+=`<div class="blk">Over the limit: your ${CAR(save.active).name} is class ${me.cls} (PI ${me.pi}). This event is Class ${lim} max (PI \u2264 ${clsMax(lim)}).</div>`;
   const sw=Object.keys(save.owned).filter(id=>id!==save.active&&fitsCls(effDef(id),lim)).slice(0,3).map(id=>`<button class="btn sm" data-use="${id}" style="background:#2a7">Use ${CAR(id).name}</button>`);
   const e=save.owned[save.active],bl=e.builds.map((B,i)=>[B,i]).filter(([B])=>fitsCls(buildDef(save.active,B.parts,B.tune),lim)).slice(0,3).map(([B,i])=>{const c=partsCost(save.active,B.parts);return`<button class="btn sm" data-bl="${i}" style="background:#27a"${c>save.cash?' disabled':''}>Load build: ${B.name}${c?' ('+money(c)+')':''}</button>`;});
@@ -1463,12 +1468,12 @@ const NET=(()=>{const PFX='amuscle-v1-',MAXP=8,HZ=1/12,DELAY=120,ABC='ABCDEFGHJK
  const fitsDesc=(ds,cls)=>fitsCls(defOf(ds),cls);
  function hostRace(track,cls){const T=TRACKS[track],slots=[{k:'h',pid:myId,nick,desc:myDesc()}],out_=[];
   for(const [id,p] of players){if(slots.length>=MAXP)break;if(p.ph==='free'&&p.desc&&fitsDesc(p.desc,cls))slots.push({k:'h',pid:id,nick:p.nick,desc:p.desc});else if(p.ph==='free')out_.push(p.nick);}
-  let n=0;while(slots.length<MAXP)slots.push({k:'ai',car:RACE_CARS[n%RACE_CARS.length].id,nick:'AI '+(++n)});
+  let n=0;const OA=cls==='OPEN'?openAI(Math.max(...slots.map(x=>x.pid===myId?effDef(save.active).pi:defOf(x.desc).pi)),MAXP-slots.length):null;while(slots.length<MAXP){const e=OA&&OA[n];slots.push(e?{k:'ai',car:e.car,pre:e.pre,nick:'AI '+(++n)}:{k:'ai',car:RACE_CARS[n%RACE_CARS.length].id,nick:'AI '+(++n)});}
   const m={t:'race',track,cls,go:hnow()+4500,slots};bcast({...m,from:myId});if(out_.length)setTimeout(()=>flash(out_.join(', ')+' over class, sitting out'),600);joinRace(m);}
  function joinRace(m){const me=m.slots.findIndex(s=>s.pid===myId);
   if(me<0){if(state==='free'&&m.slots.length){const lim=m.cls;flash(fitsCls(effDef(save.active),lim)?'The host started a race without you':'Host started a Class '+lim+' race. Your car is over the limit');}return;}
   if(state!=='free')return;race=m;inRace=true;for(const k of [...bufs.keys()])if(k.startsWith('ai'))bufs.delete(k);hidePrompt();$('gbtn').style.display='none';trackSel=m.track;raceFrom=MARKERS.find(x=>x.track===m.track);raceCls=m.cls;startRace(m);}
- function lineup(m){return m.slots.map((s,i)=>{const mine=s.pid===myId,def=s.k==='ai'?CAR(s.car):mine?effDef(save.active):defOf(s.desc);
+ function lineup(m){return m.slots.map((s,i)=>{const mine=s.pid===myId,def=s.k==='ai'?(s.pre!==undefined?aiDef(s.car,s.pre):CAR(s.car)):mine?effDef(save.active):defOf(s.desc);
   return{def,me:mine,ai:s.k==='ai'&&host,net:!mine&&!(s.k==='ai'&&host),key:s.k==='ai'?'ai'+(i-m.slots.filter(x=>x.k==='h').length):s.pid,name:s.nick,color:mine?def.paint:s.k==='ai'?[0xc0392b,0x2e8b57,0x8e44ad,0xd68910,0x1f618d,0x7f8c8d,0x17a589][i%7]:def.paint};});}
  function pack(r){return[+r.x.toFixed(2),+(r.y||0).toFixed(2),+r.z.toFixed(2),+r.h.toFixed(3),+r.v.toFixed(2),+(r.steer||0).toFixed(2),+(r.pitch||0).toFixed(3),r.seg|0,r.lap|0,r.cp|0,r.mid?1:0,r.done||0];}
  function tick(dt){if(!peer||!myId)return;if(inRace&&!(state==='count'||state==='race'||state==='done')){inRace=false;race=null;}
