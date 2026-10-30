@@ -1412,12 +1412,50 @@ const SND=(()=>{let ac=null,M=null,nodes=null,noise=null,vol=+(localStorage.getI
  function init(){if(ac)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ac=new C();M=ac.createGain();M.connect(ac.destination);applyVol();
   const n=ac.createBuffer(1,ac.sampleRate,ac.sampleRate),c=n.getChannelData(0);for(let i=0;i<c.length;i++)c[i]=Math.random()*2-1;noise=n;
   const o=(t,f)=>{const x=ac.createOscillator();x.type=t;x.frequency.value=f;x.start();return x;},g=v=>{const x=ac.createGain();x.gain.value=v;return x;};
-  const eng=g(0),lp=ac.createBiquadFilter();lp.type='lowpass';lp.Q.value=2;eng.connect(lp);lp.connect(M);
-  const fund=o('sawtooth',40),sub=o('square',20),har=o('sawtooth',80),gF=g(.5),gS=g(.3),gH=g(.15);fund.connect(gF);sub.connect(gS);har.connect(gH);
-  const lump=g(1),lfo=o('sine',6),lfoG=g(0);lfo.connect(lfoG);lfoG.connect(lump.gain);gF.connect(lump);gS.connect(lump);gH.connect(lump);lump.connect(eng);
+  const eng=g(0);eng.connect(M);engOut=eng;startEngine();
+
+
   const wh=o('sine',3000),whG=g(0);wh.connect(whG);whG.connect(M);// turbo spool / supercharger whine share one osc
   const sq=o('triangle',900),sqV=o('sine',7),sqVG=g(40),sqG=g(0);sqV.connect(sqVG);sqVG.connect(sq.frequency);const sqF=ac.createBiquadFilter();sqF.type='bandpass';sqF.frequency.value=1000;sqF.Q.value=3;sq.connect(sqF);sqF.connect(sqG);sqG.connect(M);
-  nodes={eng,lp,fund,sub,har,gF,gS,gH,lfo,lfoG,wh,whG,sq,sqG};}
+  nodes={eng,wh,whG,sq,sqG};}
+
+ // engine voice: firing-pulse synth (noise/impulse burst per cylinder, uneven cross-plane V8 spacing, jitter, exhaust+body resonances, saturation, sub thump)
+ const ENG_SRC=`class EngSynth{constructor(sr){this.sr=sr;this.ph=0;this.next=0;this.ci=0;this.rpm=800;this.tr=800;this.load=0;this.tl=0;this.env=0;this.ex=0;this.seed=12345;this.sub=0;this.sa=0;this.subv=0;this.dc=0;this.cfgs({});
+ this.bq=[0,0,0,0].map(()=>({x1:0,x2:0,y1:0,y2:0,b0:0,b1:0,b2:0,a1:0,a2:0}));this.lastF=-1;}
+ rnd(){this.seed=(this.seed*1664525+1013904223)>>>0;return this.seed/4294967296;}
+ cfgs(c){this.v=c.v||'v8';this.cyl=c.cyl||8;this.exh=c.ex||0;
+  // firing offsets within one engine cycle (fraction) + per-cylinder strength
+  if(this.v==='v8'){this.off=[0,.105,.25,.375,.5,.605,.75,.875];this.amp=[1,.62,.9,.7,1.05,.58,.85,.75];this.R=[[85,1.6],[210,2.2],[390,2.8],[900,1.6]];this.subK=1;this.jit=.12;}
+  else if(this.v==='truck'){this.off=[0,.11,.25,.36,.5,.61,.75,.86];this.amp=[1,.7,.95,.75,1,.68,.9,.8];this.R=[[60,1.5],[150,2],[290,2.5],[700,1.4]];this.subK=1.3;this.jit=.1;}
+  else if(this.v==='rot'){this.off=[0,.25,.5,.75];this.amp=[1,.95,1,.92];this.R=[[180,1.5],[520,2.5],[1200,2],[2600,1.5]];this.subK=.3;this.jit=.04;}
+  else{const n=this.cyl;this.off=[...Array(n)].map((_,i)=>i/n);this.amp=n===6?[1,.9,.97,.92,1,.88]:[1,.86,.96,.9];this.R=n===6?[[130,1.8],[380,2.6],[900,2.4],[2000,1.6]]:[[150,1.8],[450,2.6],[1100,2.4],[2400,1.6]];this.subK=.45;this.jit=.06;}}
+ setBq(b,f,q){const w=2*Math.PI*Math.min(f,this.sr*.45)/this.sr,a=Math.sin(w)/(2*q),c=Math.cos(w),n=1+a;b.b0=a/n;b.b1=0;b.b2=-a/n;b.a1=-2*c/n;b.a2=(1-a)/n;}
+ run(b,x){const y=b.b0*x+b.b2*b.x2-b.a1*b.y1-b.a2*b.y2;b.x2=b.x1;b.x1=x;b.y2=b.y1;b.y1=y;return y;}
+ render(out,n,rpm,load){const sr=this.sr;for(let i=0;i<n;i++){
+  this.rpm+=(rpm-this.rpm)*.0015;this.load+=(load-this.load)*.002;const r=this.rpm,L=this.load,cyc=r/120;
+  if((i&63)===0){const hi=Math.min(1,r/6500),k=1+hi*.5+this.exh*.08;this.R.forEach((p,j)=>this.setBq(this.bq[j],p[0]*(j===3?(.8+hi*1.4):k),p[1]));}
+  this.ph+=cyc/sr;if(this.ph>=1)this.ph-=1,this.ci=0;
+  const o=this.off;while(this.ci<o.length&&this.ph>=o[this.ci]+this.next){// fire
+   const a=this.amp[this.ci]*(1-this.jit+2*this.jit*this.rnd())*(1+L*.7);this.env=Math.max(this.env,a);this.subv+=a*this.subK;this.ci++;this.next=(this.rnd()-.5)*this.jit*.06;}
+  if(this.ci>=o.length&&this.ph<o[0]+.01)this.ci=0;
+  // excitation: decaying noise burst + click
+  const hi=Math.min(1,r/6500),nz=this.rnd()*2-1,e=this.env*(nz*(.8+.6*hi)+.4);this.env*=Math.exp(-1/(sr*(.0035+.004*(1-Math.min(1,r/6000)))));
+  this.sub+=(this.subv-this.sub)*(300/sr);this.subv*=Math.exp(-1/(sr*.006));this.sa+=(this.sub-this.sa)*(25/sr);
+  const b=this.bq;
+  let y=this.run(b[0],e)*1.1+this.run(b[1],e)*1.2+this.run(b[2],e)*(.6+.6*hi)+this.run(b[3],e)*(.12+.55*hi*(.4+L));
+  y+=(this.sub-this.sa)*.8*(1-.75*hi);
+  const drive=1.4+L*2.6+hi*1.8;y=Math.tanh(y*drive)/Math.tanh(drive)*.9;
+  y=y+.15*Math.tanh(y*6)*L;// extra saturation harmonics under load
+  this.dc+=(y-this.dc)*.0008;out[i]=(y-this.dc)*.5;}}}`;
+ let engOut=null,wk=null,fb=null,fbCfg=null,curCfg={v:'v8',cyl:8,ex:0};
+ function engCfg(c){curCfg=c;if(wk)wk.port.postMessage({cfg:c});else if(fb)fbBuild();}
+ function engMsg(rpm,load){if(wk)wk.port.postMessage({rpm,load});else if(fb){fb.src.playbackRate.setTargetAtTime(Math.max(.45,Math.min(3.2,rpm/2000)),ac.currentTime,.05);fb.lg=load;}}
+ function fbBuild(){// fallback: generate a looped 1.2s firing-pulse buffer at 2000rpm, pitch-shifted with playbackRate
+  const S=new (Function(ENG_SRC+';return EngSynth')())(ac.sampleRate);S.cfgs(curCfg);S.rpm=2000;S.load=.5;const n=Math.round(ac.sampleRate*1.2),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);S.render(d,n,2000,.5);
+  const f=Math.round(ac.sampleRate*.02);for(let i=0;i<f;i++){const k=i/f;d[n-f+i]=d[n-f+i]*(1-k)+d[i]*k;}
+  if(fb&&fb.src){try{fb.src.stop()}catch(e){}}const src=ac.createBufferSource();src.buffer=b;src.loop=true;src.loopStart=f/ac.sampleRate;src.connect(engOut);src.start();fb={src,lg:.5};}
+ function startEngine(){const W=`class P extends AudioWorkletProcessor{constructor(){super();this.s=new EngSynth(sampleRate);this.r=800;this.l=0;this.port.onmessage=e=>{const d=e.data;if(d.cfg)this.s.cfgs(d.cfg);if(d.rpm!=null){this.r=d.rpm;this.l=d.load;}};}process(i,o){const c=o[0][0];this.s.render(c,c.length,this.r,this.l);return true;}}registerProcessor('am-eng',P);`;
+  if(ac.audioWorklet&&window.AudioWorkletNode){const u=URL.createObjectURL(new Blob([ENG_SRC+W],{type:'application/javascript'}));ac.audioWorklet.addModule(u).then(()=>{wk=new AudioWorkletNode(ac,'am-eng',{numberOfInputs:0,outputChannelCount:[1]});wk.connect(engOut);wk.port.postMessage({cfg:curCfg});}).catch(()=>fbBuild());}else fbBuild();}
  function burst(f,q,dur,v){if(!ac)return;const s=ac.createBufferSource();s.buffer=noise;s.playbackRate.value=.8+Math.random()*.6;const b=ac.createBiquadFilter();b.type='bandpass';b.frequency.value=f;b.Q.value=q;const g=ac.createGain(),t=ac.currentTime;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);s.connect(b);b.connect(g);g.connect(M);s.start(t,Math.random()*.8,dur+.02);}
  function applyVol(){if(M)M.gain.setTargetAtTime(muted?0:vol*.6,ac.currentTime,.05);const b=document.getElementById('snd');if(b)b.textContent=muted||vol<=0?'🔇':vol<.4?'🔈':vol<.75?'🔉':'🔊';}
  function unlock(){init();if(!ac)return;if(ac.state!=='running')ac.resume();const s=ac.createBufferSource();s.buffer=ac.createBuffer(1,1,22050);s.connect(ac.destination);s.start(0);}
@@ -1425,17 +1463,14 @@ const SND=(()=>{let ac=null,M=null,nodes=null,noise=null,vol=+(localStorage.getI
  document.addEventListener('visibilitychange',()=>{if(!ac)return;document.hidden?ac.suspend():ac.resume();});
  function tick(r,dt,active){if(!ac||ac.state!=='running'||!nodes)return;acc+=dt;if(acc<1/30)return;const DT=acc;acc=0;const N=nodes,t=ac.currentTime,T=.06;
   if(!active||!r||muted||vol<=0){N.eng.gain.setTargetAtTime(0,t,.1);N.whG.gain.setTargetAtTime(0,t,.1);N.sqG.gain.setTargetAtTime(0,t,.1);return;}
-  const d=r.def,key=d.shape+JSON.stringify(d.parts||{});if(key!==profKey){profKey=key;prof=profile(d);}const p=prof,thr=r.thr||0,v=Math.abs(r.v),top=Math.max(20,d.top||50);
+  const d=r.def,key=d.shape+JSON.stringify(d.parts||{});if(key!==profKey){profKey=key;prof=profile(d);engCfg({v:prof.fam==='cmp'?'cmp':prof.fam,cyl:prof.cyl,ex:prof.ex});}const p=prof,thr=r.thr||0,v=Math.abs(r.v),top=Math.max(20,d.top||50);
   const G=[0,.2,.38,.56,.76,1.02],GN=5;let lo=G[gear-1],hi=G[gear];const fr=v/top;
   if(fr>hi*.97&&gear<GN){gear++;shiftT=.18;if(p.turbo&&boost>.5)burst(2500,4,.25,.25*boost);}else if(gear>1&&fr<G[gear-1]*.85){gear--;}
   lo=G[gear-1];hi=G[gear];let tr=gear===1?0:.45,frac=Math.max(0,Math.min(1.05,(fr-lo)/(hi-lo)));let tgt=p.idle+(p.red-p.idle)*(tr+(1-tr)*frac);
   if(v<1)tgt=p.idle+thr*(p.red-p.idle)*.55;// free rev at standstill
   if(shiftT>0){shiftT-=DT;}rpmS+=(tgt-rpmS)*Math.min(1,DT*(thr?9:5));const rpm=rpmS,fire=rpm/60*p.cyl/2;
-  N.fund.frequency.setTargetAtTime(fire,t,T);N.sub.frequency.setTargetAtTime(fire/2,t,T);N.har.frequency.setTargetAtTime(fire*(p.fam==='cmp'||p.fam==='rot'?2:1.5),t,T);
-  const fam=p.fam;N.gS.gain.setTargetAtTime(fam==='v8'?.45:fam==='truck'?.55:.08,t,T);N.gH.gain.setTargetAtTime(fam==='cmp'?.35:fam==='rot'?.45:.12,t,T);
-  N.lfo.frequency.setTargetAtTime(rpm/60/2,t,T);N.lfoG.gain.setTargetAtTime(fam==='v8'?.45*(1-Math.min(1,rpm/4500)):fam==='truck'?.2:0,t,T);// V8 cam lope fades with revs
-  const ex=p.ex,load=.35+.65*thr,base=(fam==='truck'?.32:fam==='v8'?.3:.24)*(1+ex*.22);let g=base*load*(.55+.45*rpm/p.red);if(shiftT>0)g*=.35;
-  N.eng.gain.setTargetAtTime(g,t,T);N.lp.frequency.setTargetAtTime((fam==='truck'?380:fam==='v8'?520:900)*(1+ex*.35)*(.6+thr*.7)*(.7+rpm/p.red),t,T);
+  const fam=p.fam,ex=p.ex,load=Math.min(1,.15+.85*thr*(.5+.5*rpm/p.red));engMsg(rpm,shiftT>0?load*.3:load);
+  let g=(fam==='truck'?.95:fam==='v8'?.9:.75)*(1+ex*.18)*(.6+.4*thr)*(.65+.35*rpm/p.red);if(shiftT>0)g*=.4;N.eng.gain.setTargetAtTime(g,t,T);
   // forced induction
   if(p.turbo){boost+=((thr&&rpm>p.red*.45?1:0)-boost)*Math.min(1,DT*(thr?2.2:6));N.wh.frequency.setTargetAtTime(1800+boost*(p.twin?5200:4200),t,T);N.whG.gain.setTargetAtTime(.05*boost*boost,t,T);}
   else if(p.sc){N.wh.frequency.setTargetAtTime(rpm*1.1,t,T);N.whG.gain.setTargetAtTime(.035*(.3+thr)*rpm/p.red,t,T);}else N.whG.gain.setTargetAtTime(0,t,T);
@@ -1444,7 +1479,7 @@ const SND=(()=>{let ac=null,M=null,nodes=null,noise=null,vol=+(localStorage.getI
   // tire squeal
   const sl=Math.abs(r.slip||0),dirt=r.off||r.surface==='dirt';const sq=v>7&&sl>.14&&!dirt?Math.min(1,(sl-.14)*3):0;N.sq.frequency.setTargetAtTime(780+sl*260,t,.1);N.sqG.gain.setTargetAtTime(.12*sq,t,.05);}
  function set(v,m){if(v!=null)vol=v;if(m!=null)muted=m;localStorage.setItem('am_vol',vol);localStorage.setItem('am_mute',muted?'1':'0');applyVol();}
- return{tick,set,get vol(){return vol},get muted(){return muted},applyVol,get ctx(){return ac},get rpm(){return Math.round(rpmS)},get gear(){return gear},profile};})();
+ return{tick,set,get vol(){return vol},get muted(){return muted},applyVol,get ctx(){return ac},get rpm(){return Math.round(rpmS)},get gear(){return gear},get engMode(){return wk?'worklet':fb?'buffer':'none'},profile};})();
 (()=>{const b=document.getElementById('snd'),p=document.getElementById('sndp'),s=document.getElementById('sndv'),m=document.getElementById('sndm');s.value=Math.round(SND.vol*100);m.textContent=SND.muted?'Unmute':'Mute';SND.applyVol();
  b.onclick=e=>{e.stopPropagation();p.style.display=p.style.display==='block'?'none':'block';};
  window.__snd=SND;s.oninput=()=>{SND.set(s.value/100,false);m.textContent='Mute';};m.onclick=()=>{SND.set(null,!SND.muted);m.textContent=SND.muted?'Unmute':'Mute';};})();
